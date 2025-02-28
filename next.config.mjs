@@ -1,6 +1,15 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true,
-};
+// Import the next-pwa package using ES Module syntax
+import NextPWA from 'next-pwa';
 
-export default nextConfig;
+// Create the withPWA function
+const withPWA = NextPWA({
+  dest: 'public',
+  register: false, // We register manually in _app.js
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development'
+});
+
+// Export the configuration using ES Module syntax
+export default withPWA({
+  reactStrictMode: true,
+});
