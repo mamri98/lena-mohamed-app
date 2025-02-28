@@ -1,28 +1,14 @@
+// This is a client-only component that will not be rendered on the server
 import { useState, useEffect } from 'react';
+import { db } from '../firebase/firebase';
+import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp } from 'firebase/firestore';
 
-export default function MoodTracker({ name }) {
-  const [isMounted, setIsMounted] = useState(false);
+// Make sure to use a named export rather than default export
+export function ClientMoodTracker({ name }) {
   const [selectedMood, setSelectedMood] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [lastMood, setLastMood] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [db, setDb] = useState(null);
-
-  // Initialize on client side only
-  useEffect(() => {
-    setIsMounted(true);
-    // Import Firebase modules only on client side
-    const initFirebase = async () => {
-      try {
-        const { db } = await import('../firebase/firebase');
-        setDb(db);
-      } catch (error) {
-        console.error("Failed to initialize Firebase:", error);
-      }
-    };
-    
-    initFirebase();
-  }, []);
 
   const moods = [
     { value: 'happy', emoji: '😊', label: 'Happy' },
@@ -37,14 +23,10 @@ export default function MoodTracker({ name }) {
     { value: 'relaxed', emoji: '😎', label: 'Relaxed' },
   ];
 
-  // Fetch mood history once mounted and DB is available
+  // Fetch the last mood entry for this person
   useEffect(() => {
-    if (!isMounted || !db || !name) return;
-
     const fetchLastMood = async () => {
       try {
-        const { collection, query, orderBy, limit, getDocs } = await import('firebase/firestore');
-        
         const moodsRef = collection(db, 'moods');
         const q = query(
           moodsRef,
@@ -69,23 +51,21 @@ export default function MoodTracker({ name }) {
       }
     };
 
-    fetchLastMood();
-  }, [isMounted, db, name]);
+    if (name) {
+      fetchLastMood();
+    }
+  }, [name]);
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
   };
 
   const handleMoodSelect = async (mood) => {
-    if (!isMounted || !db) return;
-    
     setSelectedMood(mood.value);
     setIsOpen(false);
     setIsSubmitting(true);
     
     try {
-      const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
-      
       // Save mood to Firebase
       await addDoc(collection(db, 'moods'), {
         name,
@@ -117,23 +97,9 @@ export default function MoodTracker({ name }) {
   const selectedMoodObj = findMoodByValue(selectedMood);
   const lastMoodObj = lastMood ? findMoodByValue(lastMood.mood) : null;
 
-  // Show a placeholder during server-side rendering
-  if (!isMounted) {
-    return (
-      <div className="text-center">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          How are you feeling today?
-        </label>
-        <div className="bg-white relative w-full border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left sm:text-sm">
-          <span className="block truncate text-gray-500">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="text-center">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+    <div className="w-full max-w-xs mx-auto mb-6">
+      <label className="block text-sm font-medium text-gray-700 mb-1">
         How are you feeling today?
       </label>
       
@@ -146,7 +112,7 @@ export default function MoodTracker({ name }) {
         >
           {selectedMoodObj ? (
             <span className="flex items-center">
-              <span className="mr-2 text-xl">{selectedMoodObj.emoji}</span>
+              <span className="mr-2">{selectedMoodObj.emoji}</span>
               <span className="block truncate">{selectedMoodObj.label}</span>
             </span>
           ) : (
@@ -168,7 +134,7 @@ export default function MoodTracker({ name }) {
                 onClick={() => handleMoodSelect(mood)}
               >
                 <div className="flex items-center">
-                  <span className="mr-2 text-xl">{mood.emoji}</span>
+                  <span className="mr-2">{mood.emoji}</span>
                   <span className="block truncate">{mood.label}</span>
                 </div>
               </li>
@@ -178,7 +144,7 @@ export default function MoodTracker({ name }) {
       </div>
       
       {lastMood && lastMoodObj && lastMood.name === name && (
-        <div className="mt-3 text-xs text-gray-500">
+        <div className="mt-2 text-xs text-gray-500">
           <span>Last mood: {lastMoodObj.emoji} {lastMoodObj.label}</span>
           <span className="block">
             {new Date(lastMood.timestamp?.seconds ? lastMood.timestamp.toDate() : lastMood.timestamp).toLocaleString()}
@@ -188,3 +154,6 @@ export default function MoodTracker({ name }) {
     </div>
   );
 }
+
+// Also add a default export to be safe
+export default ClientMoodTracker;

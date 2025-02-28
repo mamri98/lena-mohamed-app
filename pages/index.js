@@ -1,4 +1,4 @@
-// Updated index.js file with MoodTracker component added (without mood history)
+// Redesigned index.js with improved layout
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import InstallPrompt from '../components/InstallPrompt';
@@ -29,33 +29,40 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-blue-100 to-purple-100">
+    <div className="min-h-screen bg-gradient-to-b from-blue-100 to-purple-100">
       <Head>
         <title>Lena & Mohamed</title>
         <link rel="icon" href="/favicon.ico" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </Head>
 
-      <main className="flex w-full flex-1 flex-col items-center justify-center px-5 text-center">
-        <div className="rounded-xl bg-white p-8 shadow-xl w-full max-w-md">
-          <h1 className="text-4xl font-bold text-purple-600 mb-6">
+      {/* Switch user button in top right */}
+      <div className="fixed top-4 right-4 z-10">
+        <button 
+          onClick={toggleName} 
+          className="bg-white shadow-md text-purple-600 text-sm font-medium rounded-full px-3 py-2 hover:bg-purple-100 transition duration-300"
+        >
+          Switch to {name === 'Lena' ? 'Mohamed' : 'Lena'}
+        </button>
+      </div>
+
+      <main className="max-w-md mx-auto px-4 py-8">
+        {/* Header with greeting only */}
+        <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+          <h1 className="text-2xl font-bold text-purple-600 text-center">
             {greeting} {name}!
           </h1>
-          
-          {/* Mood Tracker */}
+        </div>
+        
+        {/* Mood tracker widget */}
+        <div className="bg-white rounded-xl shadow-md p-4">
+          <h2 className="text-lg font-semibold text-purple-600 mb-3 text-center">Mood Tracker</h2>
           <MoodTracker name={name} />
-          
-          <button 
-            onClick={toggleName} 
-            className="rounded-full bg-purple-500 px-6 py-3 text-white font-semibold hover:bg-purple-700 transition duration-300"
-          >
-            Switch to {name === 'Lena' ? 'Mohamed' : 'Lena'}
-          </button>
         </div>
       </main>
 
-      <footer className="flex h-24 w-full items-center justify-center border-t">
-        <p className="text-gray-600">Made with love for my bunny</p>
+      <footer className="max-w-md mx-auto px-4 py-6 text-center text-gray-600 text-sm">
+        Made with love for you bunny 💜
       </footer>
       
       {/* iOS installation prompt */}
