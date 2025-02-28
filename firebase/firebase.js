@@ -1,3 +1,4 @@
+// Simplified firebase.js without storage
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';

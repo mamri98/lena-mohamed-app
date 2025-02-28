@@ -1,8 +1,9 @@
-// Redesigned index.js with improved layout
+// Updated index.js with Daily Selfie component
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import InstallPrompt from '../components/InstallPrompt';
 import MoodTracker from '../components/MoodTracker';
+import DailySelfie from '../components/DailySelfie';
 
 export default function Home() {
   const [name, setName] = useState('Lena');
@@ -54,10 +55,16 @@ export default function Home() {
           </h1>
         </div>
         
-        {/* Mood tracker widget */}
-        <div className="bg-white rounded-xl shadow-md p-4">
-          <h2 className="text-lg font-semibold text-purple-600 mb-3 text-center">Mood Tracker</h2>
-          <MoodTracker name={name} />
+        {/* Full-width selfie for better display, mood tracker below */}
+        <div className="flex flex-col gap-6 mb-6">
+          {/* Daily Selfie component */}
+          <DailySelfie name={name} />
+          
+          {/* Mood tracker widget */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h2 className="text-xl font-semibold text-purple-600 mb-4 text-center">Mood Tracker</h2>
+            <MoodTracker name={name} />
+          </div>
         </div>
       </main>
 
