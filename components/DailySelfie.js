@@ -17,6 +17,10 @@ export default function DailySelfie({ name }) {
   useEffect(() => {
     if (!isMounted || !db || !name) return;
 
+    // Reset state when name changes to prevent showing previous user's selfie
+    setTodaysSelfie(null);
+    setHasUploadedToday(false);
+
     const fetchTodaysSelfie = async () => {
       try {
         // Get today's date at midnight (start of day)
@@ -37,8 +41,11 @@ export default function DailySelfie({ name }) {
         
         if (!snapshot.empty) {
           const selfieData = snapshot.docs[0].data();
-          setTodaysSelfie(selfieData);
-          setHasUploadedToday(true);
+          // Double-check this is actually the current user's selfie
+          if (selfieData.name === name) {
+            setTodaysSelfie(selfieData);
+            setHasUploadedToday(true);
+          }
         } else {
           // No selfie today, check for the most recent one
           const recentQuery = query(
@@ -51,8 +58,12 @@ export default function DailySelfie({ name }) {
           const recentSnapshot = await getDocs(recentQuery);
           
           if (!recentSnapshot.empty) {
-            setTodaysSelfie(recentSnapshot.docs[0].data());
-            setHasUploadedToday(false);
+            const selfieData = recentSnapshot.docs[0].data();
+            // Double-check this is actually the current user's selfie
+            if (selfieData.name === name) {
+              setTodaysSelfie(selfieData);
+              setHasUploadedToday(false);
+            }
           }
         }
       } catch (error) {
