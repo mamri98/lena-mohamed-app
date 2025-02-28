@@ -62,7 +62,7 @@ export default function Home() {
       </main>
 
       <footer className="max-w-md mx-auto px-4 py-6 text-center text-gray-600 text-sm">
-        Made with love for you bunny 💜
+        Made with love for my bunny 💜
       </footer>
       
       {/* iOS installation prompt */}

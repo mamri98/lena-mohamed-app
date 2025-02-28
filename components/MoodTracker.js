@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 
 export default function MoodTracker({ name }) {
   const [isMounted, setIsMounted] = useState(false);
-  const [selectedMood, setSelectedMood] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [lastMood, setLastMood] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [db, setDb] = useState(null);
+  
+  // We don't set a default selected mood - it will be derived from lastMood
 
   // Initialize on client side only
   useEffect(() => {
@@ -79,7 +80,6 @@ export default function MoodTracker({ name }) {
   const handleMoodSelect = async (mood) => {
     if (!isMounted || !db) return;
     
-    setSelectedMood(mood.value);
     setIsOpen(false);
     setIsSubmitting(true);
     
@@ -114,7 +114,8 @@ export default function MoodTracker({ name }) {
     return moods.find(mood => mood.value === value) || null;
   };
   
-  const selectedMoodObj = findMoodByValue(selectedMood);
+  // Instead of tracking a separate selected mood state,
+  // we use the last mood for the current person
   const lastMoodObj = lastMood ? findMoodByValue(lastMood.mood) : null;
 
   // Show a placeholder during server-side rendering
@@ -144,10 +145,10 @@ export default function MoodTracker({ name }) {
           onClick={toggleDropdown}
           disabled={isSubmitting}
         >
-          {selectedMoodObj ? (
+          {lastMoodObj ? (
             <span className="flex items-center">
-              <span className="mr-2 text-xl">{selectedMoodObj.emoji}</span>
-              <span className="block truncate">{selectedMoodObj.label}</span>
+              <span className="mr-2 text-xl">{lastMoodObj.emoji}</span>
+              <span className="block truncate">{lastMoodObj.label}</span>
             </span>
           ) : (
             <span className="block truncate text-gray-500">Select your mood</span>
@@ -177,12 +178,9 @@ export default function MoodTracker({ name }) {
         )}
       </div>
       
-      {lastMood && lastMoodObj && lastMood.name === name && (
+      {lastMood && lastMoodObj && (
         <div className="mt-3 text-xs text-gray-500">
-          <span>Last mood: {lastMoodObj.emoji} {lastMoodObj.label}</span>
-          <span className="block">
-            {new Date(lastMood.timestamp?.seconds ? lastMood.timestamp.toDate() : lastMood.timestamp).toLocaleString()}
-          </span>
+          <span>Updated: {new Date(lastMood.timestamp?.seconds ? lastMood.timestamp.toDate() : lastMood.timestamp).toLocaleString()}</span>
         </div>
       )}
     </div>
