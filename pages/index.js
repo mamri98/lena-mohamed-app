@@ -1,6 +1,8 @@
+// Updated index.js file with MoodTracker component added (without mood history)
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import InstallPrompt from '../components/InstallPrompt';
+import MoodTracker from '../components/MoodTracker';
 
 export default function Home() {
   const [name, setName] = useState('Lena');
@@ -35,10 +37,14 @@ export default function Home() {
       </Head>
 
       <main className="flex w-full flex-1 flex-col items-center justify-center px-5 text-center">
-        <div className="rounded-xl bg-white p-8 shadow-xl">
-          <h1 className="text-4xl font-bold text-purple-600 mb-4">
+        <div className="rounded-xl bg-white p-8 shadow-xl w-full max-w-md">
+          <h1 className="text-4xl font-bold text-purple-600 mb-6">
             {greeting} {name}!
           </h1>
+          
+          {/* Mood Tracker */}
+          <MoodTracker name={name} />
+          
           <button 
             onClick={toggleName} 
             className="rounded-full bg-purple-500 px-6 py-3 text-white font-semibold hover:bg-purple-700 transition duration-300"
@@ -49,11 +55,11 @@ export default function Home() {
       </main>
 
       <footer className="flex h-24 w-full items-center justify-center border-t">
-        <p className="text-gray-600">Made with love for Lena & Mohamed</p>
+        <p className="text-gray-600">Made with love for my bunny</p>
       </footer>
       
       {/* iOS installation prompt */}
-        <InstallPrompt />
-      </div>
-    );
-  }
+      <InstallPrompt />
+    </div>
+  );
+}
