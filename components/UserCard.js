@@ -1,5 +1,5 @@
 // components/UserCard.js
-// Fixed user card component with improved iPhone compatibility
+// Simplified user card with minimal animation for iPhone compatibility
 import { useState, useCallback } from 'react';
 import { ANIMATIONS, createAnimationController } from '../utils/app-animations';
 
@@ -15,7 +15,7 @@ export default function UserCard({ name, onToggle }) {
     return "Good evening";
   })();
   
-  // Get formatted date (calculated once on render)
+  // Calculate current date
   const formattedDate = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     month: 'long',
@@ -34,7 +34,6 @@ export default function UserCard({ name, onToggle }) {
       const newName = displayName === 'Lena' ? 'Mohamed' : 'Lena';
       setDisplayName(newName);
       
-      // Call parent handler
       if (onToggle) onToggle(newName);
       
       // Reset animation state
@@ -46,45 +45,23 @@ export default function UserCard({ name, onToggle }) {
     return controller.cleanup;
   }, [isFlipping, displayName, onToggle]);
   
-  // Compute other user name
-  const otherName = displayName === 'Lena' ? 'Mohamed' : 'Lena';
-  
+  // Simple version without complex animations - guaranteed to work on iPhone
   return (
-    <div className="relative">
-      {/* Fixed height container to prevent content overflow */}
-      <div className={`sticky top-0 z-10 ${ANIMATIONS.CARD_CONTAINER} ${isFlipping ? ANIMATIONS.CARD_FLIP : ''}`}>
-        {/* Front card with explicit padding and height */}
-        <div className={`${ANIMATIONS.CARD_FRONT} bg-gradient-to-r from-purple-500 to-pink-400 text-white px-4 py-3 shadow-md w-full`}>
-          <div className="flex justify-between items-center">
-            {/* Left content - greeting and date */}
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-bold truncate">{greeting}, {displayName}!</h1>
-              <p className="text-xs opacity-90 truncate">{formattedDate}</p>
-            </div>
-            
-            {/* Right content - switch button with fixed width */}
-            <button
-              onClick={handleToggle}
-              className="ml-2 bg-white bg-opacity-20 text-white text-sm font-medium rounded-full px-3 py-2 hover:bg-opacity-30 transition-colors whitespace-nowrap flex-shrink-0"
-              disabled={isFlipping}
-            >
-              Switch to {otherName}
-            </button>
+    <div className="sticky top-0 z-10 w-full">
+      <div className="bg-gradient-to-r from-purple-500 to-pink-400 text-white px-4 py-2 shadow-md">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <h1 className="text-base font-bold">{greeting}, {displayName}!</h1>
+            <p className="text-xs opacity-90">{formattedDate}</p>
           </div>
-        </div>
-        
-        {/* Back card with matching style */}
-        <div className={`${ANIMATIONS.CARD_BACK} bg-gradient-to-r from-pink-400 to-purple-500 text-white px-4 py-3 shadow-md w-full`}>
-          <div className="flex justify-between items-center">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-bold truncate">{greeting}, {otherName}!</h1>
-              <p className="text-xs opacity-90 truncate">{formattedDate}</p>
-            </div>
-            <button className="ml-2 bg-white bg-opacity-20 text-white text-sm font-medium rounded-full px-3 py-2 opacity-0 flex-shrink-0">
-              {/* Placeholder button for alignment */}
-              Switch to {displayName}
-            </button>
-          </div>
+          
+          <button 
+            onClick={handleToggle}
+            disabled={isFlipping}
+            className="bg-white bg-opacity-20 text-white text-xs font-medium rounded-full px-2 py-1 hover:bg-opacity-30 transition-colors"
+          >
+            Switch to {displayName === 'Lena' ? 'Mohamed' : 'Lena'}
+          </button>
         </div>
       </div>
     </div>
