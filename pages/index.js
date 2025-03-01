@@ -31,6 +31,12 @@ const LinkShare = dynamic(() => import('../components/LinkShare'), {
   loading: () => <div className="p-4 text-center">Loading link sharing...</div>
 });
 
+// New shared document component
+const SharedDocument = dynamic(() => import('../components/SharedDocument'), {
+  ssr: false,
+  loading: () => <div className="p-4 text-center">Loading shared document...</div>
+});
+
 // Feature configurations - defined outside component to avoid recreation
 const FEATURES = {
   mood: {
@@ -44,7 +50,7 @@ const FEATURES = {
         <line x1="15" y1="9" x2="15.01" y2="9"></line>
       </svg>
     ),
-    description: "Track how you feel"
+    description: "How are you feeling?"
   },
   selfie: {
     title: 'Daily Selfie',
@@ -55,7 +61,7 @@ const FEATURES = {
         <circle cx="12" cy="13" r="4"></circle>
       </svg>
     ),
-    description: "Take your daily photo"
+    description: "Selfie!(no pressure)"
   },
   quran: {
     title: 'Daily Quran Verse',
@@ -69,7 +75,7 @@ const FEATURES = {
         <line x1="8" y1="15" x2="12" y2="15"></line>
       </svg>
     ),
-    description: "Daily verse"
+    description: "ربنا اغفر لنا"
   },
   links: {
     title: 'Link Sharing',
@@ -80,7 +86,22 @@ const FEATURES = {
         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
       </svg>
     ),
-    description: "Share useful links"
+    description: "Sharing links"
+  },
+  // New shared document feature
+  document: {
+    title: 'Our Dua Journal',
+    color: 'indigo',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+    ),
+    description: "Our shared notes<3"
   }
 };
 
@@ -119,6 +140,7 @@ export default function Home() {
       case 'selfie': return <DailySelfie name={name} />;
       case 'quran': return <DailyQuranVerse />;
       case 'links': return <LinkShare name={name} />;
+      case 'document': return <SharedDocument />;
       default: return null;
     }
   }
@@ -147,7 +169,7 @@ export default function Home() {
         {/* User card with toggle */}
         <UserCard name={name} onToggle={handleToggleName} />
 
-        <main className="max-w-md mx-auto px-4 py-6">
+        <main className={`max-w-md mx-auto px-4 ${activeFeature === 'document' ? 'pt-2 pb-0' : 'py-6'}`}>
           {/* Active Feature Container */}
           {activeFeature && (
             <FeatureContainer
@@ -177,9 +199,11 @@ export default function Home() {
           )}
         </main>
 
-        <footer className="max-w-md mx-auto px-4 pb-6 text-center text-gray-600 text-sm">
-          Made with love for my bunny 💜
-        </footer>
+        {activeFeature !== 'document' && (
+          <footer className="max-w-md mx-auto px-4 pb-6 text-center text-gray-600 text-sm">
+            Made with love for my bunny 💜
+          </footer>
+        )}
         
         {/* iOS installation prompt */}
         <InstallPrompt />

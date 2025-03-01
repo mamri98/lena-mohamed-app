@@ -1,5 +1,5 @@
 // components/FeatureContainer.js
-// Simplified feature container with minimal animation
+// Enhanced for better document viewing support
 import { useState, useEffect } from 'react';
 import { ANIMATIONS, createAnimationController } from '../utils/app-animations';
 
@@ -8,11 +8,18 @@ const TEXT_COLOR_CLASSES = {
   purple: 'text-purple-600',
   blue: 'text-blue-600',
   green: 'text-green-600',
-  amber: 'text-amber-600'
+  amber: 'text-amber-600',
+  indigo: 'text-indigo-600'
 };
 
 export default function FeatureContainer({ title, color, isActive, onClose, children }) {
   const [animationState, setAnimationState] = useState(null); // null, 'expanding', 'shrinking'
+  const [isDocumentView, setIsDocumentView] = useState(false);
+  
+  // Check if this is the document view to apply special styling
+  useEffect(() => {
+    setIsDocumentView(title === 'Our Journal');
+  }, [title]);
   
   // Handle animation state based on active state
   useEffect(() => {
@@ -51,9 +58,23 @@ export default function FeatureContainer({ title, color, isActive, onClose, chil
   // Get text color class with fallback
   const textColorClass = TEXT_COLOR_CLASSES[color] || 'text-gray-600';
   
+  // Special document container style
+  const containerStyle = isDocumentView 
+    ? {
+        height: 'calc(100vh - 120px)',
+        maxHeight: 'unset',
+        display: 'flex',
+        flexDirection: 'column',
+        paddingBottom: '8px'
+      } 
+    : {};
+  
   return (
-    <div className={`bg-white rounded-xl shadow-md p-6 mb-4 ${animationClass}`}>
-      <div className="flex justify-between items-center mb-4">
+    <div 
+      className={`bg-white rounded-xl shadow-md p-4 mb-4 ${animationClass}`}
+      style={containerStyle}
+    >
+      <div className={`flex justify-between items-center ${isDocumentView ? 'mb-1' : 'mb-4'}`}>
         <h2 className={`text-xl font-semibold ${textColorClass}`}>{title}</h2>
         <button 
           onClick={onClose}
@@ -65,7 +86,10 @@ export default function FeatureContainer({ title, color, isActive, onClose, chil
           </svg>
         </button>
       </div>
-      {children}
+      
+      <div className={isDocumentView ? 'flex-grow h-full' : ''}>
+        {children}
+      </div>
     </div>
   );
 }
