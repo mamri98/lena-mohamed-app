@@ -1,24 +1,34 @@
+// components/SplashScreen.js
+// Simplified splash screen with efficient animations
 import { useEffect, useState } from 'react';
+import { ANIMATIONS, createAnimationController } from '../utils/app-animations';
 
-export default function SplashScreen() {
-  const [isShown, setIsShown] = useState(true);
-
+export default function SplashScreen({ onComplete }) {
+  const [animating, setAnimating] = useState(false);
+  
   useEffect(() => {
-    // Hide splash screen after 2 seconds
-    const timer = setTimeout(() => {
-      setIsShown(false);
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (!isShown) return null;
-
+    const controller = createAnimationController();
+    
+    // Start animation after a short delay
+    controller.after(() => {
+      setAnimating(true);
+      
+      // Complete animation and hide splash screen
+      controller.after(() => {
+        if (onComplete) onComplete();
+      }, 700); // Match animation duration
+    }, 1000);
+    
+    return controller.cleanup;
+  }, [onComplete]);
+  
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-b from-blue-100 to-purple-100">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-b from-blue-100 to-purple-100 ${animating ? ANIMATIONS.SPLASH_FADE : ''}`}>
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-purple-600 mb-4">Lena & Mohamed</h1>
-        <p className="text-gray-700">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ...</p>
+        <div className="bg-white rounded-full w-28 h-28 flex items-center justify-center mx-auto mb-4">
+          <h1 className="text-3xl font-bold text-purple-600">L&M</h1>
+        </div>
+        <p className="text-gray-700">بسم الله الرحمن الرحيم</p>
       </div>
     </div>
   );
