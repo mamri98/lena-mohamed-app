@@ -1,9 +1,11 @@
-// Updated index.js with Daily Selfie component
+// pages/index.js
+// Updated to include DailyQuranVerse component with locked theme per day
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import InstallPrompt from '../components/InstallPrompt';
 import MoodTracker from '../components/MoodTracker';
 import DailySelfie from '../components/DailySelfie';
+import DailyQuranVerse from '../components/DailyQuranVerse';
 
 export default function Home() {
   const [name, setName] = useState('Lena');
@@ -35,6 +37,16 @@ export default function Home() {
         <title>Lena & Mohamed</title>
         <link rel="icon" href="/favicon.ico" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        {/* Add Arabic font for Quran verses */}
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" 
+          rel="stylesheet"
+        />
+        <style jsx global>{`
+          .font-arabic {
+            font-family: 'Amiri', serif;
+          }
+        `}</style>
       </Head>
 
       {/* Switch user button in top right */}
@@ -54,6 +66,9 @@ export default function Home() {
             {greeting} {name}!
           </h1>
         </div>
+        
+        {/* Daily Quran Verse - with theme selector */}
+        <DailyQuranVerse />
         
         {/* Full-width selfie for better display, mood tracker below */}
         <div className="flex flex-col gap-6 mb-6">
