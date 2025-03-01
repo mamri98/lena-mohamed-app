@@ -1,11 +1,12 @@
 // pages/index.js
-// Updated to include DailyQuranVerse component with locked theme per day
+// Updated to include LinkShare component positioned on the left
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import InstallPrompt from '../components/InstallPrompt';
 import MoodTracker from '../components/MoodTracker';
 import DailySelfie from '../components/DailySelfie';
 import DailyQuranVerse from '../components/DailyQuranVerse';
+import LinkShare from '../components/LinkShare';
 
 export default function Home() {
   const [name, setName] = useState('Lena');
@@ -67,8 +68,18 @@ export default function Home() {
           </h1>
         </div>
         
-        {/* Daily Quran Verse - with theme selector */}
-        <DailyQuranVerse />
+        {/* Two-column layout for LinkShare (left) and Daily Quran Verse (right) on larger screens */}
+        <div className="md:flex md:gap-4 mb-6">
+          {/* Link Share component - positioned on the left */}
+          <div className="md:w-1/3 mb-6 md:mb-0">
+            <LinkShare name={name} />
+          </div>
+          
+          {/* Daily Quran Verse - positioned on the right */}
+          <div className="md:w-2/3">
+            <DailyQuranVerse />
+          </div>
+        </div>
         
         {/* Full-width selfie for better display, mood tracker below */}
         <div className="flex flex-col gap-6 mb-6">
