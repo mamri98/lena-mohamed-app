@@ -1,4 +1,5 @@
 // components/MissYouNotification.js
+// EDITED: Changed notification timeframe from 5 minutes to 24 hours
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/firebase';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
@@ -34,11 +35,11 @@ export default function MissYouNotification({ name }) {
         if (!snapshot.empty) {
           const data = snapshot.docs[0].data();
           
-          // Check if this is a recent notification (within 5 minutes)
+          // Check if this is a recent notification (within 24 hours)
           const timestamp = data.timestamp?.toDate() || new Date();
-          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+          const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
           
-          if (timestamp > fiveMinutesAgo) {
+          if (timestamp > twentyFourHoursAgo) {
             // Show new notification
             setNotification({
               name: data.name,
@@ -81,7 +82,10 @@ export default function MissYouNotification({ name }) {
     if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
     
     const hours = Math.floor(minutes / 60);
-    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    
+    const days = Math.floor(hours / 24);
+    return `${days} day${days > 1 ? 's' : ''} ago`;
   };
   
   return (

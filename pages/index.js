@@ -212,9 +212,6 @@ export default function Home() {
             </FeatureContainer>
           )}
           
-          {/* Always show Marriage Tips widget below Link Sharing */}
-          {activeFeature === 'links' && <MarriageTips />}
-          
           {/* Dashboard Grid */}
           {!activeFeature && (
             <div className="grid grid-cols-2 gap-4 mb-4">
