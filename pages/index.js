@@ -31,6 +31,12 @@ const LinkShare = dynamic(() => import('../components/LinkShare'), {
   loading: () => <div className="p-4 text-center">Loading link sharing...</div>
 });
 
+// Marriage Tips component
+const MarriageTips = dynamic(() => import('../components/MarriageTips'), {
+  ssr: false,
+  loading: () => <div className="p-4 text-center">Loading marriage tips...</div>
+});
+
 // New shared document component
 const SharedDocument = dynamic(() => import('../components/SharedDocument'), {
   ssr: false,
@@ -88,7 +94,16 @@ const FEATURES = {
     ),
     description: "Sharing links"
   },
-  // New shared document feature
+  marriage: {
+    title: 'Marriage Tips',
+    color: 'red',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+      </svg>
+    ),
+    description: "Tips for our future"
+  },
   document: {
     title: 'Our Dua Journal',
     color: 'indigo',
@@ -140,6 +155,7 @@ export default function Home() {
       case 'selfie': return <DailySelfie name={name} />;
       case 'quran': return <DailyQuranVerse />;
       case 'links': return <LinkShare name={name} />;
+      case 'marriage': return <MarriageTips />;
       case 'document': return <SharedDocument />;
       default: return null;
     }
@@ -181,6 +197,9 @@ export default function Home() {
               {renderFeatureContent()}
             </FeatureContainer>
           )}
+          
+          {/* Always show Marriage Tips widget below Link Sharing */}
+          {activeFeature === 'links' && <MarriageTips />}
           
           {/* Dashboard Grid */}
           {!activeFeature && (
