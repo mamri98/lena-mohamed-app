@@ -43,6 +43,17 @@ const SharedDocument = dynamic(() => import('../components/SharedDocument'), {
   loading: () => <div className="p-4 text-center">Loading shared document...</div>
 });
 
+// Miss You components
+const MissYouButton = dynamic(() => import('../components/MissYouButton'), {
+  ssr: false,
+  loading: () => null
+});
+
+const MissYouNotification = dynamic(() => import('../components/MissYouNotification'), {
+  ssr: false,
+  loading: () => null
+});
+
 // Feature configurations - defined outside component to avoid recreation
 const FEATURES = {
   mood: {
@@ -182,6 +193,9 @@ export default function Home() {
       
       {/* Main App Content - hidden until splash completes */}
       <div className={appReady ? ANIMATIONS.CONTENT_FADE_IN : 'hidden'}>
+        {/* Add Miss You Notification */}
+        <MissYouNotification name={name} />
+        
         {/* User card with toggle */}
         <UserCard name={name} onToggle={handleToggleName} />
 
@@ -219,8 +233,11 @@ export default function Home() {
         </main>
 
         {activeFeature !== 'document' && (
-          <footer className="max-w-md mx-auto px-4 pb-6 text-center text-gray-600 text-sm">
-            Made with love for my bunny 💜
+          <footer className="max-w-md mx-auto px-4 pb-16 text-center">
+            {/* Add Miss You Button */}
+            {!activeFeature && <MissYouButton name={name} />}
+            
+            <p className="text-gray-600 text-sm mt-2">Made with love for my bunny 💜</p>
           </footer>
         )}
         
