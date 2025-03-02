@@ -20,8 +20,6 @@ export default function MissYouNotification({ name }) {
     // The other person's name
     const otherPerson = name === 'Lena' ? 'Mohamed' : 'Lena';
     
-    let unsubscribe = () => {};
-    
     try {
       // Set up Firestore listener
       const missYouRef = collection(db, 'missYou');
@@ -32,7 +30,7 @@ export default function MissYouNotification({ name }) {
         limit(1)
       );
       
-      unsubscribe = onSnapshot(q, (snapshot) => {
+      const unsubscribe = onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
           const data = snapshot.docs[0].data();
           
@@ -48,20 +46,20 @@ export default function MissYouNotification({ name }) {
             });
             setIsVisible(true);
             
-            // Auto-dismiss after 10 seconds
+            // Auto-dismiss after 8 seconds (reduced from 10)
             setTimeout(() => {
               setIsVisible(false);
-            }, 10000);
+            }, 7000);
           }
         }
       }, (error) => {
         console.error("Error listening for miss you messages:", error);
       });
+      
+      return () => unsubscribe();
     } catch (error) {
       console.error("Error setting up miss you listener:", error);
     }
-    
-    return () => unsubscribe();
   }, [isMounted, db, name]);
   
   // Hide notification completely after fade-out
@@ -87,31 +85,46 @@ export default function MissYouNotification({ name }) {
   };
   
   return (
-    <div 
-      className={`fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-50 transition-opacity duration-500 ${
-        isVisible ? 'opacity-100' : 'opacity-0'
-      }`}
-      style={{ maxWidth: '90%' }}
-      onTransitionEnd={handleAnimationEnd}
-    >
-      <div className="flex items-center">
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          className="h-6 w-6 text-red-500 mr-2 flex-shrink-0 animate-pulse" 
-          viewBox="0 0 20 20" 
-          fill="currentColor"
-        >
-          <path 
-            fillRule="evenodd" 
-            d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" 
-            clipRule="evenodd" 
-          />
-        </svg>
-        <div>
-          <p className="font-medium text-gray-800">{notification.name} misses you ❤️</p>
-          <p className="text-xs text-gray-500">{formatTimeAgo(notification.timestamp)}</p>
+    <>
+      {/* CSS for the glow animation */}
+      <style jsx>{`
+        @keyframes glowAnimation {
+          0% { box-shadow: 0 0 5px 0 rgba(255, 0, 102, 0.5); }
+          50% { box-shadow: 0 0 20px 5px rgba(255, 0, 102, 0.7); }
+          100% { box-shadow: 0 0 5px 0 rgba(255, 0, 102, 0.5); }
+        }
+        
+        .notification-glow {
+          animation: glowAnimation 1.5s ease-in-out infinite;
+        }
+      `}</style>
+      
+      <div 
+        className={`fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-50 transition-opacity duration-500 ${
+          isVisible ? 'opacity-100 notification-glow' : 'opacity-0'
+        }`}
+        style={{ maxWidth: '90%' }}
+        onTransitionEnd={handleAnimationEnd}
+      >
+        <div className="flex items-center">
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-6 w-6 text-red-500 mr-2 flex-shrink-0 animate-pulse" 
+            viewBox="0 0 20 20" 
+            fill="currentColor"
+          >
+            <path 
+              fillRule="evenodd" 
+              d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" 
+              clipRule="evenodd" 
+            />
+          </svg>
+          <div>
+            <p className="font-medium text-gray-800">{notification.name} misses you ❤️</p>
+            <p className="text-xs text-gray-500">{formatTimeAgo(notification.timestamp)}</p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
