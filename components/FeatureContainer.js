@@ -1,5 +1,5 @@
 // components/FeatureContainer.js
-// Enhanced for better document viewing support
+// The key fix is removing overflow constraints that might be clipping dropdowns
 import { useState, useEffect } from 'react';
 import { ANIMATIONS, createAnimationController } from '../utils/app-animations';
 
@@ -65,9 +65,12 @@ export default function FeatureContainer({ title, color, isActive, onClose, chil
         maxHeight: 'unset',
         display: 'flex',
         flexDirection: 'column',
-        paddingBottom: '8px'
+        paddingBottom: '8px',
+        overflow: 'visible' // Ensure overflow is visible for dropdowns
       } 
-    : {};
+    : { 
+        overflow: 'visible'  // Explicitly set overflow to visible
+      };
   
   return (
     <div 
@@ -87,7 +90,7 @@ export default function FeatureContainer({ title, color, isActive, onClose, chil
         </button>
       </div>
       
-      <div className={isDocumentView ? 'flex-grow h-full' : ''}>
+      <div className="overflow-visible">
         {children}
       </div>
     </div>
