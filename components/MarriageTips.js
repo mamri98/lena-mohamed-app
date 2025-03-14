@@ -1,4 +1,5 @@
 // components/MarriageTips.js
+// Fixed marriage tip selection algorithm to ensure better distribution
 import { useState, useEffect } from 'react';
 import { marriageTips } from '../data/marriageTips';
 
@@ -7,21 +8,34 @@ export default function MarriageTips() {
   const [dailyTip, setDailyTip] = useState(null);
   const [countdownText, setCountdownText] = useState('');
   
-  // Get a pseudorandom but consistent tip for each day
+  // Get a pseudorandom but consistent tip for each day with improved distribution
   const getDailyTip = () => {
-    // Get today's date in a simple string format to use as seed
-    const today = new Date().toLocaleDateString();
+    // Get date components individually to ensure consistency across locales
+    const now = new Date();
+    const day = now.getDate();
+    const month = now.getMonth() + 1; // +1 because getMonth() is 0-indexed
+    const year = now.getFullYear();
     
-    // Create a simple hash of the date string to use as a seed
-    let seed = 0;
-    for (let i = 0; i < today.length; i++) {
-      seed = ((seed << 5) - seed) + today.charCodeAt(i);
-      seed = seed & seed; // Convert to 32bit integer
-    }
+    // Create a numeric value based on the date (year * 10000 + month * 100 + day)
+    // This ensures each date has a unique number
+    const dateNumber = (year * 10000) + (month * 100) + day;
     
-    // Use the seed to get a consistent tip for this day
-    const index = Math.abs(seed) % marriageTips.length;
+    // Use prime multipliers to create better distribution
+    const dayFactor = day * 31;
+    const monthFactor = month * 37;
+    const yearFactor = (year % 100) * 41; // Use just the last two digits of year for consistency
+    
+    // Combine all factors for better distribution
+    const combinedValue = dateNumber + dayFactor + monthFactor + yearFactor;
+    const index = combinedValue % marriageTips.length;
+    
     return marriageTips[index];
+  };
+  
+  // Get today's date in a consistent format for storage comparison
+  const getTodayDateString = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
   };
   
   // Calculate countdown to nikkah
@@ -48,8 +62,8 @@ export default function MarriageTips() {
     setIsMounted(true);
     
     if (typeof window !== 'undefined') {
-      // Get today's date in a simple string format
-      const today = new Date().toLocaleDateString();
+      // Get today's date in a consistent format (YYYY-MM-DD)
+      const today = getTodayDateString();
       
       // Check if we already have a tip for today
       const storedTipData = localStorage.getItem('dailyMarriageTip');
@@ -63,7 +77,7 @@ export default function MarriageTips() {
         const newTip = getDailyTip();
         setDailyTip(newTip);
         
-        // Cache in localStorage
+        // Cache in localStorage with consistent date format
         localStorage.setItem('dailyMarriageTip', JSON.stringify({
           date: today,
           data: newTip

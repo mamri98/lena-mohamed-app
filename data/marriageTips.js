@@ -44,7 +44,7 @@ export const marriageTips = [
     { category: "Apologies", tip: "A sincere 'I'm sorry' goes a long way. Take responsibility instead of making excuses." },
     { category: "Small Acts of Kindness", tip: "Simple acts—bringing coffee, leaving notes—have a big impact on marital happiness." },
     { category: "Listening", tip: "Before responding, ask yourself: Am I listening to understand or just to reply?" },
-    { category: "Compromise", tip: "You don't always have to 'win' an argument. Sometimes, peace is more valuable than being right." },
+    { category: "Compromise", tip: "Compromise in marriage isn’t about winning or losing—it’s about creating solutions where both partners feel valued and respected." },
     { category: "Managing Stress", tip: "Don't take out stress on your spouse. Develop healthy coping strategies together." },
     { category: "Celebrating Success", tip: "Be your spouse's biggest cheerleader. Celebrate their wins, big or small." },
     { category: "Checking In", tip: "Ask your spouse, 'How are you feeling today?' Small check-ins prevent emotional distance." },
