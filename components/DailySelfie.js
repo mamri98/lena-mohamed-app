@@ -135,6 +135,9 @@ export default function DailySelfie({ name }) {
       return;
     }
     
+    // Check if this is a retake (from the retake button)
+    const isRetake = e.target.id === 'selfie-retake';
+    
     setLoading(true);
     
     try {
@@ -146,6 +149,7 @@ export default function DailySelfie({ name }) {
         name,
         imageData: base64Image,
         timestamp: serverTimestamp(),
+        isRetake: isRetake // Track if this was a retake
       };
       
       await addDoc(collection(db, 'selfies'), selfieDoc);
@@ -217,38 +221,66 @@ export default function DailySelfie({ name }) {
       )}
       
       <div className="w-full border-t border-gray-200 pt-4">
-        <div className="flex justify-center items-center">
-          <label 
-            htmlFor="selfie-upload" 
-            className={`
-              inline-flex items-center justify-center 
-              bg-purple-600 text-white rounded-lg px-6 py-3
-              text-base font-medium
-              ${loading || (hasUploadedToday && todaysSelfie) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-700 cursor-pointer'}
-              transition duration-150 ease-in-out
-              w-full max-w-xs
-            `}
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        <div className="flex justify-center items-center space-x-3">
+          {hasUploadedToday ? (
+            <>
+              <label 
+                className="inline-flex items-center justify-center 
+                  bg-gray-300 text-gray-700 rounded-lg px-4 py-3
+                  text-base font-medium opacity-50 cursor-not-allowed
+                  transition duration-150 ease-in-out flex-1"
+              >
+                You already uploaded today
+              </label>
+              
+              <label 
+                htmlFor="selfie-retake" 
+                className={`
+                  inline-flex items-center justify-center 
+                  bg-purple-600 text-white rounded-lg px-4 py-3
+                  text-base font-medium 
+                  ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-700 cursor-pointer'}
+                  transition duration-150 ease-in-out
+                `}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Uploading...
-              </>
-            ) : hasUploadedToday ? (
-              'You already uploaded today'
-            ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Take a Selfie
-              </>
-            )}
-          </label>
+                Retake
+              </label>
+            </>
+          ) : (
+            <label 
+              htmlFor="selfie-upload" 
+              className={`
+                inline-flex items-center justify-center 
+                bg-purple-600 text-white rounded-lg px-6 py-3
+                text-base font-medium
+                ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-700 cursor-pointer'}
+                transition duration-150 ease-in-out
+                w-full max-w-xs
+              `}
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Take a Selfie
+                </>
+              )}
+            </label>
+          )}
+          
           <input
             id="selfie-upload"
             type="file"
@@ -256,6 +288,16 @@ export default function DailySelfie({ name }) {
             capture="user"
             onChange={handleFileUpload}
             disabled={loading || hasUploadedToday}
+            className="sr-only"
+          />
+          
+          <input
+            id="selfie-retake"
+            type="file"
+            accept="image/*"
+            capture="user"
+            onChange={handleFileUpload}
+            disabled={loading}
             className="sr-only"
           />
         </div>
