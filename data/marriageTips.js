@@ -30,7 +30,7 @@ export const marriageTips = [
     
     // Secular & Scientific Marriage Tips (60%)
     { category: "Communication", tip: "Active listening strengthens relationships. Give full attention when your spouse speaks." },
-    { category: "Conflict Resolution", tip: "Use 'I' statements instead of 'You' statements to prevent blame and encourage discussion." },
+    { category: "Conflict Resolution", tip: "Use 'Ii' statements instead of 'You' statements to prevent blame and encourage discussion." },
     { category: "Quality Time", tip: "Schedule regular date nights to keep romance alive, even after years of marriage." },
     { category: "Personal Space", tip: "A healthy relationship allows for individual hobbies and friendships outside of marriage." },
     { category: "Love Languages", tip: "Learn your spouse's love language—words of affirmation, acts of service, receiving gifts, quality time, or physical touch." },
