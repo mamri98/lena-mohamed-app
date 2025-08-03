@@ -28,6 +28,7 @@ export const marriageTips = [
     { category: "Generosity", tip: "Giving gifts and kind gestures—even small ones—can deepen love and connection in a marriage." },
     { category: "Nurturing Love", tip: "Saying 'I love you' and showing affection is not just encouraged but a sunnah of the Prophet (PBUH)." },
     
+    
     // Secular & Scientific Marriage Tips (60%)
     { category: "Communication", tip: "Active listening strengthens relationships. Give full attention when your spouse speaks." },
     { category: "Conflict Resolution", tip: "Use 'I' statements instead of 'You' statements to prevent blame and encourage discussion." },
@@ -58,5 +59,4 @@ export const marriageTips = [
     { category: "Routine Check-Ins", tip: "Have regular discussions about your relationship. What’s working? What needs improvement?" },
     { category: "Shared Responsibilities", tip: "Share household and parenting duties to prevent resentment and promote teamwork." },
     { category: "Financial Transparency", tip: "Be open and understanding about finances. Financial stress is a common source of marital conflict." },
-    { category: "Seek Help When Needed", tip: "Don’t hesitate to seek professional help if needed. Couples therapy can provide valuable tools for strengthening your marriage." }
   ];
