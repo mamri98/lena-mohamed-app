@@ -30,7 +30,7 @@ export const marriageTips = [
     
     // Secular & Scientific Marriage Tips (60%)
     { category: "Communication", tip: "Active listening strengthens relationships. Give full attention when your spouse speaks." },
-    { category: "Conflict Resolution", tip: "Use 'Ii' statements instead of 'You' statements to prevent blame and encourage discussion." },
+    { category: "Conflict Resolution", tip: "Use 'I' statements instead of 'You' statements to prevent blame and encourage discussion." },
     { category: "Quality Time", tip: "Schedule regular date nights to keep romance alive, even after years of marriage." },
     { category: "Personal Space", tip: "A healthy relationship allows for individual hobbies and friendships outside of marriage." },
     { category: "Love Languages", tip: "Learn your spouse's love language—words of affirmation, acts of service, receiving gifts, quality time, or physical touch." },
@@ -50,4 +50,13 @@ export const marriageTips = [
     { category: "Checking In", tip: "Ask your spouse, 'How are you feeling today?' Small check-ins prevent emotional distance." },
     { category: "Self-Care", tip: "A happy marriage starts with individual well-being. Prioritize self-care and encourage your spouse to do the same." },
     { category: "Expectations", tip: "Unspoken expectations lead to disappointment. Communicate needs openly and honestly." }
+    { category: "Keep the Spark Alive", tip: "Don’t let routine take over. Try new things together—whether it’s a new activity, a hobby, or a new destination." }
+    { category: "Forgiveness", tip: "Forgiveness is essential. Holding grudges only creates emotional distance. Let go of past mistakes to move forward together." }
+    { category: "Shared Goals", tip: "Set and work towards shared goals, whether financial, personal, or family-oriented. It strengthens your partnership." }
+    { category: "Empathy", tip: "Try to see things from your spouse's perspective. Empathy fosters understanding and reduces conflict." }
+    { category: "Physical Affection", tip: "Regular physical affection, like holding hands or cuddling, can significantly improve relationship satisfaction." }
+    { category: "Routine Check-Ins", tip: "Have regular discussions about your relationship. What’s working? What needs improvement?" },
+    { category: "Shared Responsibilities", tip: "Share household and parenting duties to prevent resentment and promote teamwork." },
+    { category: "Financial Transparency", tip: "Be open and understanding about finances. Financial stress is a common source of marital conflict." },
+    { category: "Seek Help When Needed", tip: "Don’t hesitate to seek professional help if needed. Couples therapy can provide valuable tools for strengthening your marriage." }
   ];
