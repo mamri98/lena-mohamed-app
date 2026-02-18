@@ -41,7 +41,7 @@ export default function MarriageTips() {
   // Calculate countdown to nikkah
   const calculateCountdown = () => {
     const now = new Date();
-    const nikkahDate = new Date('March 1, 2026');
+    const nikkahDate = new Date('March 28, 2026');
     
     // Calculate difference in milliseconds
     const difference = nikkahDate - now;
