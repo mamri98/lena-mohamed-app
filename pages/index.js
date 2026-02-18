@@ -1,4 +1,5 @@
 // pages/index.js
+// CHANGED: Added 'drawing' feature to FEATURES object and dynamic import for DrawingCanvas
 
 import Head from 'next/head';
 import { useEffect, useState, useCallback } from 'react';
@@ -10,7 +11,6 @@ import FeatureContainer from '../components/FeatureContainer';
 import SplashScreen from '../components/SplashScreen';
 import { ANIMATIONS } from '../utils/app-animations';
 
-// Import feature components only when needed (code splitting)
 const MoodTracker = dynamic(() => import('../components/MoodTracker'), { 
   ssr: false,
   loading: () => <div className="p-4 text-center">Loading mood tracker...</div>
@@ -31,19 +31,16 @@ const LinkShare = dynamic(() => import('../components/LinkShare'), {
   loading: () => <div className="p-4 text-center">Loading link sharing...</div>
 });
 
-// Marriage Tips component
 const MarriageTips = dynamic(() => import('../components/MarriageTips'), {
   ssr: false,
   loading: () => <div className="p-4 text-center">Loading marriage tips...</div>
 });
 
-// New shared document component
 const SharedDocument = dynamic(() => import('../components/SharedDocument'), {
   ssr: false,
   loading: () => <div className="p-4 text-center">Loading shared document...</div>
 });
 
-// Miss You components
 const MissYouButton = dynamic(() => import('../components/MissYouButton'), {
   ssr: false,
   loading: () => null
@@ -54,7 +51,12 @@ const MissYouNotification = dynamic(() => import('../components/MissYouNotificat
   loading: () => null
 });
 
-// Feature configurations - defined outside component to avoid recreation
+// NEW: Drawing canvas
+const DrawingCanvas = dynamic(() => import('../components/DrawingCanvas'), {
+  ssr: false,
+  loading: () => <div className="p-4 text-center">Loading canvas...</div>
+});
+
 const FEATURES = {
   mood: {
     title: 'Mood Tracker',
@@ -128,6 +130,20 @@ const FEATURES = {
       </svg>
     ),
     description: "Our shared notes<3"
+  },
+  // NEW: Drawing canvas feature
+  drawing: {
+    title: 'Draw Together',
+    color: 'pink',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-pink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+        <path d="M2 2l7.586 7.586"></path>
+        <circle cx="11" cy="11" r="2"></circle>
+      </svg>
+    ),
+    description: "Draw something together"
   }
 };
 
@@ -137,29 +153,24 @@ export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
   const [appReady, setAppReady] = useState(false);
   
-  // Handle splash screen completion
   const handleSplashComplete = useCallback(() => {
     setShowSplash(false);
     setAppReady(true);
   }, []);
   
-  // Handle user switching
   const handleToggleName = useCallback((newName) => {
     setName(newName);
     setActiveFeature(null);
   }, []);
   
-  // Handle feature selection
   const selectFeature = useCallback((feature) => {
     setActiveFeature(feature);
   }, []);
   
-  // Close active feature
   const closeFeature = useCallback(() => {
     setActiveFeature(null);
   }, []);
   
-  // Render appropriate content for active feature
   function renderFeatureContent() {
     switch (activeFeature) {
       case 'mood': return <MoodTracker name={name} />;
@@ -168,13 +179,13 @@ export default function Home() {
       case 'links': return <LinkShare name={name} />;
       case 'marriage': return <MarriageTips />;
       case 'document': return <SharedDocument />;
+      case 'drawing': return <DrawingCanvas name={name} />;  // NEW
       default: return null;
     }
   }
   
-  
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a0a2e] to-[#0d0618]">
+    <div className="min-h-screen bg-gradient-to-b from-blue-100 to-purple-100">
       <Head>
         <title>Lena & Mohamed</title>
         <link rel="icon" href="/favicon.ico" />
@@ -188,19 +199,13 @@ export default function Home() {
         `}</style>
       </Head>
 
-      {/* Splash Screen - only shown initially */}
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       
-      {/* Main App Content - hidden until splash completes */}
       <div className={appReady ? ANIMATIONS.CONTENT_FADE_IN : 'hidden'}>
-        {/* Add Miss You Notification */}
         <MissYouNotification name={name} />
-        
-        {/* User card with toggle */}
         <UserCard name={name} onToggle={handleToggleName} />
 
-        <main className={`max-w-md mx-auto px-4 ${activeFeature === 'document' ? 'pt-2 pb-0' : 'py-6'}`}>
-          {/* Active Feature Container */}
+        <main className={`max-w-md mx-auto px-4 ${activeFeature === 'document' || activeFeature === 'drawing' ? 'pt-2 pb-0' : 'py-6'}`}>
           {activeFeature && (
             <FeatureContainer
               title={FEATURES[activeFeature]?.title || ''}
@@ -212,7 +217,6 @@ export default function Home() {
             </FeatureContainer>
           )}
           
-          {/* Dashboard Grid */}
           {!activeFeature && (
             <div className="grid grid-cols-2 gap-4 mb-4">
               {Object.entries(FEATURES).map(([key, feature]) => (
@@ -229,16 +233,13 @@ export default function Home() {
           )}
         </main>
 
-        {activeFeature !== 'document' && (
+        {activeFeature !== 'document' && activeFeature !== 'drawing' && (
           <footer className="max-w-md mx-auto px-4 pb-16 text-center">
-            {/* Add Miss You Button */}
             {!activeFeature && <MissYouButton name={name} />}
-            
-            <p className="text-purple-200 text-sm mt-2">Made with love for my bunny 💜</p>
+            <p className="text-gray-600 text-sm mt-2">Made with love for my bunny 💜</p>
           </footer>
         )}
         
-        {/* iOS installation prompt */}
         <InstallPrompt />
       </div>
     </div>
