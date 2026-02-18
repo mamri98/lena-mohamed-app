@@ -59,7 +59,7 @@ export default function MissYouButton({ name }) {
           />
         </svg>
       </button>
-      <p className="text-sm text-gray-600 mt-2">Send "I miss you"</p>
+      <p className="text-sm text-purple-200 mt-2">Send "I miss you"</p>
     </div>
   );
 }

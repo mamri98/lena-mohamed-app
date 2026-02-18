@@ -1,5 +1,5 @@
 // pages/index.js
-// Optimized for code efficiency and minimal memory usage
+
 import Head from 'next/head';
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
@@ -174,7 +174,7 @@ export default function Home() {
   
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-100 to-purple-100">
+    <div className="min-h-screen bg-gradient-to-b from-[#1a0a2e] to-[#0d0618]">
       <Head>
         <title>Lena & Mohamed</title>
         <link rel="icon" href="/favicon.ico" />
@@ -234,7 +234,7 @@ export default function Home() {
             {/* Add Miss You Button */}
             {!activeFeature && <MissYouButton name={name} />}
             
-            <p className="text-gray-600 text-sm mt-2">Made with love for my bunny 💜</p>
+            <p className="text-purple-200 text-sm mt-2">Made with love for my bunny 💜</p>
           </footer>
         )}
         
