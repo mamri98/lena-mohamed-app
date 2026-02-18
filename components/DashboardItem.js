@@ -1,5 +1,4 @@
 // components/DashboardItem.js
-// Simplified dashboard item with minimal animation
 import { useState, useCallback } from 'react';
 import { ANIMATIONS, createAnimationController } from '../utils/app-animations';
 
@@ -9,6 +8,8 @@ const COLOR_CLASSES = {
   blue: { bg: 'bg-blue-100', text: 'text-blue-600' },
   green: { bg: 'bg-green-100', text: 'text-green-600' },
   amber: { bg: 'bg-amber-100', text: 'text-amber-600' },
+  red: { bg: 'bg-red-100', text: 'text-red-600' },
+  indigo: { bg: 'bg-indigo-100', text: 'text-indigo-600' },
   default: { bg: 'bg-gray-100', text: 'text-gray-600' }
 };
 
@@ -45,7 +46,12 @@ export default function DashboardItem({ icon, title, description, color, onClick
       <div className={`w-16 h-16 rounded-full ${colorClasses.bg} flex items-center justify-center mb-2`}>
         {icon}
       </div>
-      <h2 className={`text-lg font-semibold ${colorClasses.text}`}>{title}</h2>
+      <h2
+        className={`font-semibold ${colorClasses.text} text-center leading-tight w-full`}
+        style={{ fontSize: 'clamp(0.75rem, 3vw, 1.125rem)' }}
+      >
+        {title}
+      </h2>
       <p className="text-xs text-gray-500 text-center mt-1">{description}</p>
     </div>
   );
