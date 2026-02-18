@@ -49,12 +49,12 @@ export const marriageTips = [
     { category: "Celebrating Success", tip: "Be your spouse's biggest cheerleader. Celebrate their wins, big or small." },
     { category: "Checking In", tip: "Ask your spouse, 'How are you feeling today?' Small check-ins prevent emotional distance." },
     { category: "Self-Care", tip: "A happy marriage starts with individual well-being. Prioritize self-care and encourage your spouse to do the same." },
-    { category: "Expectations", tip: "Unspoken expectations lead to disappointment. Communicate needs openly and honestly." }
-    { category: "Keep the Spark Alive", tip: "Don’t let routine take over. Try new things together—whether it’s a new activity, a hobby, or a new destination." }
-    { category: "Forgiveness", tip: "Forgiveness is essential. Holding grudges only creates emotional distance. Let go of past mistakes to move forward together." }
-    { category: "Shared Goals", tip: "Set and work towards shared goals, whether financial, personal, or family-oriented. It strengthens your partnership." }
-    { category: "Empathy", tip: "Try to see things from your spouse's perspective. Empathy fosters understanding and reduces conflict." }
-    { category: "Physical Affection", tip: "Regular physical affection, like holding hands or cuddling, can significantly improve relationship satisfaction." }
+    { category: "Expectations", tip: "Unspoken expectations lead to disappointment. Communicate needs openly and honestly." },
+    { category: "Keep the Spark Alive", tip: "Don’t let routine take over. Try new things together—whether it’s a new activity, a hobby, or a new destination." },
+    { category: "Forgiveness", tip: "Forgiveness is essential. Holding grudges only creates emotional distance. Let go of past mistakes to move forward together." },
+    { category: "Shared Goals", tip: "Set and work towards shared goals, whether financial, personal, or family-oriented. It strengthens your partnership." },
+    { category: "Empathy", tip: "Try to see things from your spouse's perspective. Empathy fosters understanding and reduces conflict." },
+    { category: "Physical Affection", tip: "Regular physical affection, like holding hands or cuddling, can significantly improve relationship satisfaction." },
     { category: "Routine Check-Ins", tip: "Have regular discussions about your relationship. What’s working? What needs improvement?" },
     { category: "Shared Responsibilities", tip: "Share household and parenting duties to prevent resentment and promote teamwork." },
     { category: "Financial Transparency", tip: "Be open and understanding about finances. Financial stress is a common source of marital conflict." },
