@@ -12,24 +12,6 @@ const COLORS = [
 
 const STROKE_WIDTHS = [2, 5, 10, 18];
 
-const RANDOM_PROMPTS = [
-  'A dragon drinking tea',
-  'Your pet as a superhero',
-  'A city on the moon',
-  'A very sad sandwich',
-  'The ocean but make it spooky',
-  'A robot learning to cook',
-  'Your dream house',
-  'A cloud with feelings',
-  'A cat running a business meeting',
-  'The sun on a Monday morning',
-  'A fish discovering fire',
-  'Two mountains having an argument',
-  'A flower that plays guitar',
-  'An astronaut lost in IKEA',
-  'A very polite monster',
-  'Your favorite food as a person',
-];
 
 const STROKES_COLLECTION = 'canvasStrokes';
 const PRESENCE_COLLECTION = 'canvasPresence';
@@ -107,9 +89,6 @@ export default function DrawingCanvas({ name }) {
     setIsEditingPrompt(false);
   };
 
-  const randomPrompt = () => {
-    setPromptInput(RANDOM_PROMPTS[Math.floor(Math.random() * RANDOM_PROMPTS.length)]);
-  };
 
   const getCtx = () => canvasRef.current?.getContext('2d');
 
@@ -318,7 +297,6 @@ export default function DrawingCanvas({ name }) {
               placeholder="Enter a prompt..."
               className="flex-1 text-xs px-3 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-400"
             />
-            <button onClick={randomPrompt} className="text-xs px-2 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200">🎲</button>
             <button onClick={() => savePrompt(promptInput)} className="text-xs px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Set</button>
             <button onClick={() => setIsEditingPrompt(false)} className="text-xs px-2 py-2 text-gray-400 hover:text-gray-600">✕</button>
           </div>
