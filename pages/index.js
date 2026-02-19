@@ -80,7 +80,7 @@ const FEATURES = {
         <circle cx="12" cy="13" r="4"></circle>
       </svg>
     ),
-    description: "Selfie!(no pressure)"
+    description: "Selfie time!"
   },
   quran: {
     title: 'Daily Quran Verse',
@@ -105,7 +105,7 @@ const FEATURES = {
         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
       </svg>
     ),
-    description: "Sharing links"
+    description: "Link and connect"
   },
   marriage: {
     title: 'Marriage Tips',
@@ -143,7 +143,7 @@ const FEATURES = {
         <circle cx="11" cy="11" r="2"></circle>
       </svg>
     ),
-    description: "Draw something together"
+    description: "Let's draw together :)"
   }
 };
 
@@ -185,7 +185,7 @@ export default function Home() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-100 to-purple-100">
+    <div className="min-h-screen bg-gradient-to-b from-[#1a0533] to-[#2d0a5e]">
       <Head>
         <title>Lena & Mohamed</title>
         <link rel="icon" href="/favicon.ico" />
@@ -236,7 +236,7 @@ export default function Home() {
         {activeFeature !== 'document' && activeFeature !== 'drawing' && (
           <footer className="max-w-md mx-auto px-4 pb-16 text-center">
             {!activeFeature && <MissYouButton name={name} />}
-            <p className="text-gray-600 text-sm mt-2">Made with love for my bunny 💜</p>
+            <p className="text-purple-200 text-sm mt-2">Made with love for my bunny 💜</p>
           </footer>
         )}
         
