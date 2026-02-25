@@ -1,6 +1,7 @@
 // components/DrawingCanvas.js
-// CHANGED: White/gray UI elements updated to dark purple theme;
-// canvas background kept light for drawing visibility, controls restyled
+// CHANGED: Fixed canvas sizing to be fully responsive across orientations (landscape iPad, portrait mobile, desktop).
+//          Replaced hardcoded calc(100vh - 160px) with flex-based layout + ResizeObserver on the canvas container.
+//          Canvas now fills exactly the space available to it, regardless of screen size or orientation.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
@@ -17,6 +18,7 @@ const META_COLLECTION = 'canvasMeta';
 
 export default function DrawingCanvas({ name }) {
   const canvasRef = useRef(null);
+  const canvasContainerRef = useRef(null); // NEW: ref on the container, not the window
   const isDrawing = useRef(false);
   const currentStroke = useRef([]);
   const lastPos = useRef(null);
@@ -99,14 +101,24 @@ export default function DrawingCanvas({ name }) {
     strokes.forEach((s) => drawStroke(ctx, s));
   }, [drawStroke]);
 
+  // NEW: Resize based on the container's actual dimensions, not window
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const container = canvas.parentElement;
+    const container = canvasContainerRef.current;
+    if (!canvas || !container) return;
+
     const dpr = window.devicePixelRatio || 1;
-    const w = container.clientWidth, h = container.clientHeight;
-    canvas.width = w * dpr; canvas.height = h * dpr;
-    canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+
+    // Avoid resize if dimensions haven't changed (prevents redraw flicker)
+    if (canvas.width === w * dpr && canvas.height === h * dpr) return;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+
     const ctx = getCtx();
     ctx.scale(dpr, dpr);
     ctx.fillStyle = '#fafafa';
@@ -114,11 +126,25 @@ export default function DrawingCanvas({ name }) {
     redrawAllStrokes(strokesCache.current);
   }, [redrawAllStrokes]);
 
+  // NEW: Use ResizeObserver on the container instead of window resize
   useEffect(() => {
     if (!isMounted) return;
+
+    const container = canvasContainerRef.current;
+    if (!container) return;
+
+    // Initial size
     const timer = setTimeout(resizeCanvas, 50);
-    window.addEventListener('resize', resizeCanvas);
-    return () => { clearTimeout(timer); window.removeEventListener('resize', resizeCanvas); };
+
+    const observer = new ResizeObserver(() => {
+      resizeCanvas();
+    });
+    observer.observe(container);
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
   }, [isMounted, resizeCanvas]);
 
   useEffect(() => {
@@ -227,9 +253,10 @@ export default function DrawingCanvas({ name }) {
   }
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 160px)' }}>
+    // NEW: Use h-full + flex-col so this fills whatever space FeatureContainer gives it
+    <div className="flex flex-col h-full min-h-0">
       {/* Presence indicator */}
-      <div className="flex items-center justify-between mb-2 px-1">
+      <div className="flex items-center justify-between mb-2 px-1 flex-shrink-0">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full inline-block ${otherPersonPresent ? 'bg-green-400 animate-pulse' : 'bg-purple-500/40'}`} />
           <span className="text-xs text-purple-300">
@@ -240,7 +267,7 @@ export default function DrawingCanvas({ name }) {
       </div>
 
       {/* Prompt bar */}
-      <div className="mb-2">
+      <div className="mb-2 flex-shrink-0">
         {isEditingPrompt ? (
           <div className="flex gap-2 items-center">
             <input
@@ -263,8 +290,12 @@ export default function DrawingCanvas({ name }) {
         )}
       </div>
 
-      {/* Canvas */}
-      <div className="relative flex-1 rounded-xl overflow-hidden border border-white/10 shadow-inner bg-gray-50" style={{ touchAction: 'none' }}>
+      {/* Canvas — flex-1 + min-h-0 so it stretches to fill remaining space */}
+      <div
+        ref={canvasContainerRef}
+        className="relative flex-1 min-h-0 rounded-xl overflow-hidden border border-white/10 shadow-inner bg-gray-50"
+        style={{ touchAction: 'none' }}
+      >
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
@@ -275,7 +306,7 @@ export default function DrawingCanvas({ name }) {
       </div>
 
       {/* Controls */}
-      <div className="mt-3 space-y-2">
+      <div className="mt-3 space-y-2 flex-shrink-0">
         <div className="flex gap-1.5 flex-wrap justify-center">
           {COLORS.map((color) => (
             <button
