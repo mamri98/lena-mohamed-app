@@ -218,10 +218,10 @@ export default function Home() {
 
         {/* main fills all remaining height; scrollable for normal features, locked for drawing */}
         <main
-          className={`flex-1 min-h-0 max-w-md w-full mx-auto px-4 ${
+          className={`flex-1 min-h-0 w-full ${
             isFullscreenFeature
-              ? 'overflow-hidden flex flex-col pt-2'
-              : 'overflow-y-auto py-6'
+              ? 'overflow-hidden flex flex-col pt-1'
+              : 'overflow-y-auto py-6 px-4 max-w-md mx-auto'
           }`}
         >
           {activeFeature && (
