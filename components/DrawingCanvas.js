@@ -364,70 +364,89 @@ export default function DrawingCanvas({ name }) {
           />
         </div>
 
-        {/* Right sidebar — compact vertical controls */}
-        <div className="flex flex-col gap-2 w-14 flex-shrink-0 justify-between py-1">
-          {/* Presence dot */}
+        {/* Right sidebar — scrollable if needed, fixed width */}
+        <div className="flex flex-col gap-3 w-20 flex-shrink-0 overflow-y-auto py-1 px-1">
+          {/* Presence indicator */}
           <div className="flex flex-col items-center gap-1">
             <span className={`w-2 h-2 rounded-full ${otherPersonPresent ? 'bg-green-400 animate-pulse' : 'bg-purple-500/40'}`} />
-            <span className="text-purple-400" style={{ fontSize: 9, textAlign: 'center', lineHeight: 1.2 }}>
+            <span className="text-purple-400 text-center leading-tight" style={{ fontSize: 10 }}>
               {otherPersonPresent ? `${otherName} ✓` : otherName}
             </span>
           </div>
 
-          {/* Color palette — 2 column grid */}
-          <div className="grid grid-cols-2 gap-1 justify-items-center">
+          {/* Divider */}
+          <div className="border-t border-white/10" />
+
+          {/* Color palette — 3 column grid, bigger swatches */}
+          <div className="grid grid-cols-3 gap-1.5 justify-items-center">
             {COLORS.map((color) => (
               <button
                 key={color}
                 onClick={() => { setSelectedColor(color); setIsEraser(false); }}
                 className="rounded-full flex-shrink-0"
                 style={{
-                  width: 18, height: 18, backgroundColor: color,
+                  width: 20, height: 20, backgroundColor: color,
                   border: selectedColor === color && !isEraser
                     ? '2px solid #ec4899'
-                    : color === '#ffffff' ? '1px solid rgba(255,255,255,0.3)' : '1px solid transparent',
+                    : color === '#ffffff' ? '1px solid rgba(255,255,255,0.4)' : '1px solid transparent',
                 }}
               />
             ))}
           </div>
 
+          {/* Divider */}
+          <div className="border-t border-white/10" />
+
           {/* Stroke widths */}
-          <div className="flex flex-col items-center gap-1">
+          <div className="flex flex-col items-center gap-1.5">
             {STROKE_WIDTHS.map((w) => (
               <button
                 key={w}
                 onClick={() => { setSelectedWidth(w); setIsEraser(false); }}
                 className={`flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors ${selectedWidth === w && !isEraser ? 'ring-2 ring-pink-400' : ''}`}
-                style={{ width: 26, height: 26 }}
+                style={{ width: 30, height: 30 }}
               >
-                <div className="rounded-full bg-white/70" style={{ width: Math.min(w + 2, 16), height: Math.min(w + 2, 16) }} />
+                <div className="rounded-full bg-white/70" style={{ width: Math.min(w + 3, 18), height: Math.min(w + 3, 18) }} />
               </button>
             ))}
           </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-col gap-1">
+          {/* Divider */}
+          <div className="border-t border-white/10" />
+
+          {/* Action buttons — icon-based, readable size */}
+          <div className="flex flex-col gap-1.5">
+            {/* Eraser — pencil-off icon */}
             <button
               onClick={() => setIsEraser(!isEraser)}
-              className={`text-center rounded-lg border transition-colors leading-tight py-1 ${isEraser ? 'bg-pink-500/20 border-pink-400/50 text-pink-300' : 'bg-white/5 border-white/20 text-purple-300'}`}
-              style={{ fontSize: 9 }}
+              className={`flex flex-col items-center justify-center rounded-lg border py-1.5 gap-0.5 transition-colors ${isEraser ? 'bg-pink-500/20 border-pink-400/50 text-pink-300' : 'bg-white/5 border-white/20 text-purple-300'}`}
             >
-              Erase
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H7l-4-4 9.5-9.5 6.5 6.5-2 2" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-4" />
+              </svg>
+              <span style={{ fontSize: 10 }}>Erase</span>
             </button>
+            {/* Undo */}
             <button
               onClick={handleUndo}
               disabled={myStrokes.length === 0}
-              className="text-center rounded-lg border bg-white/5 border-white/20 text-purple-300 disabled:opacity-30 py-1"
-              style={{ fontSize: 9 }}
+              className="flex flex-col items-center justify-center rounded-lg border bg-white/5 border-white/20 text-purple-300 disabled:opacity-30 py-1.5 gap-0.5 transition-colors"
             >
-              Undo
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 010 10H9m-6-10l4-4m-4 4l4 4" />
+              </svg>
+              <span style={{ fontSize: 10 }}>Undo</span>
             </button>
+            {/* Clear */}
             <button
               onClick={handleReset}
-              className="text-center rounded-lg border bg-red-500/10 border-red-500/20 text-red-400 py-1"
-              style={{ fontSize: 9 }}
+              className="flex flex-col items-center justify-center rounded-lg border bg-red-500/10 border-red-500/30 text-red-400 py-1.5 gap-0.5 transition-colors"
             >
-              Clear
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span style={{ fontSize: 10 }}>Clear</span>
             </button>
           </div>
         </div>
