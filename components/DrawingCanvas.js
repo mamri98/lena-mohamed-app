@@ -1,6 +1,6 @@
 // components/DrawingCanvas.js
-// NEW FILE: Collaborative real-time drawing canvas with Firestore sync
-// NOTE: Firebase loaded dynamically (client-side only) to avoid SSR export errors
+// CHANGED: White/gray UI elements updated to dark purple theme;
+// canvas background kept light for drawing visibility, controls restyled
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
@@ -9,10 +9,7 @@ const COLORS = [
   '#eab308', '#22c55e', '#14b8a6', '#38bdf8',
   '#3b82f6', '#8b5cf6', '#ec4899', '#92400e',
 ];
-
 const STROKE_WIDTHS = [2, 5, 10, 18];
-
-
 const STROKES_COLLECTION = 'canvasStrokes';
 const PRESENCE_COLLECTION = 'canvasPresence';
 const PROMPT_COLLECTION = 'canvasPrompt';
@@ -46,49 +43,35 @@ export default function DrawingCanvas({ name }) {
         const firestore = await import('firebase/firestore');
         setDb(firebaseDb);
         setFs(firestore);
-      } catch (e) {
-        console.error('Firebase init error:', e);
-      }
+      } catch (e) { console.error('Firebase init error:', e); }
     };
     init();
   }, []);
 
   useEffect(() => {
     if (!db || !fs || !name) return;
-    const presenceRef = fs.doc(db, PRESENCE_COLLECTION, name);
-    fs.setDoc(presenceRef, { name, online: true, timestamp: fs.serverTimestamp() })
-      .catch(e => console.error('Presence write error:', e));
-    return () => {
-      fs.deleteDoc(presenceRef).catch(e => console.error('Presence delete error:', e));
-    };
+    const ref = fs.doc(db, PRESENCE_COLLECTION, name);
+    fs.setDoc(ref, { name, online: true, timestamp: fs.serverTimestamp() }).catch(console.error);
+    return () => { fs.deleteDoc(ref).catch(console.error); };
   }, [db, fs, name]);
 
   useEffect(() => {
     if (!db || !fs) return;
-    const presenceRef = fs.doc(db, PRESENCE_COLLECTION, otherName);
-    const unsubscribe = fs.onSnapshot(presenceRef, (snap) => {
-      setOtherPersonPresent(snap.exists());
-    });
-    return () => unsubscribe();
+    const ref = fs.doc(db, PRESENCE_COLLECTION, otherName);
+    return fs.onSnapshot(ref, (snap) => setOtherPersonPresent(snap.exists()));
   }, [db, fs, otherName]);
 
   useEffect(() => {
     if (!db || !fs) return;
-    const promptRef = fs.doc(db, PROMPT_COLLECTION, 'current');
-    const unsubscribe = fs.onSnapshot(promptRef, (snap) => {
-      setPrompt(snap.exists() ? snap.data().text || '' : '');
-    });
-    return () => unsubscribe();
+    const ref = fs.doc(db, PROMPT_COLLECTION, 'current');
+    return fs.onSnapshot(ref, (snap) => setPrompt(snap.exists() ? snap.data().text || '' : ''));
   }, [db, fs]);
 
   const savePrompt = async (text) => {
     if (!db || !fs) return;
-    await fs.setDoc(fs.doc(db, PROMPT_COLLECTION, 'current'), {
-      text, updatedBy: name, timestamp: fs.serverTimestamp()
-    });
+    await fs.setDoc(fs.doc(db, PROMPT_COLLECTION, 'current'), { text, updatedBy: name, timestamp: fs.serverTimestamp() });
     setIsEditingPrompt(false);
   };
-
 
   const getCtx = () => canvasRef.current?.getContext('2d');
 
@@ -100,9 +83,7 @@ export default function DrawingCanvas({ name }) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-    for (let i = 1; i < stroke.points.length; i++) {
-      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-    }
+    for (let i = 1; i < stroke.points.length; i++) ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
     ctx.stroke();
   }, []);
 
@@ -123,12 +104,9 @@ export default function DrawingCanvas({ name }) {
     if (!canvas) return;
     const container = canvas.parentElement;
     const dpr = window.devicePixelRatio || 1;
-    const w = container.clientWidth;
-    const h = container.clientHeight;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${h}px`;
+    const w = container.clientWidth, h = container.clientHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
     const ctx = getCtx();
     ctx.scale(dpr, dpr);
     ctx.fillStyle = '#fafafa';
@@ -146,13 +124,12 @@ export default function DrawingCanvas({ name }) {
   useEffect(() => {
     if (!db || !fs || !name) return;
     const q = fs.query(fs.collection(db, STROKES_COLLECTION), fs.orderBy('timestamp', 'asc'));
-    const unsubscribe = fs.onSnapshot(q, (snapshot) => {
+    return fs.onSnapshot(q, (snapshot) => {
       const strokes = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       strokesCache.current = strokes;
       setMyStrokes(strokes.filter((s) => s.author === name));
       redrawAllStrokes(strokes);
     });
-    return () => unsubscribe();
   }, [db, fs, name, redrawAllStrokes]);
 
   useEffect(() => {
@@ -162,9 +139,7 @@ export default function DrawingCanvas({ name }) {
         const metaSnap = await fs.getDoc(fs.doc(db, META_COLLECTION, 'canvas'));
         const lastReset = metaSnap.exists() ? metaSnap.data().lastReset?.toMillis() || 0 : 0;
         if (Date.now() - lastReset > 24 * 60 * 60 * 1000) await doReset(false);
-      } catch (e) {
-        console.error('Auto-reset error:', e);
-      }
+      } catch (e) { console.error('Auto-reset error:', e); }
     };
     checkReset();
   }, [db, fs]);
@@ -178,23 +153,15 @@ export default function DrawingCanvas({ name }) {
       batch.set(fs.doc(db, META_COLLECTION, 'canvas'), { lastReset: fs.serverTimestamp() });
       if (clearPromptToo) batch.delete(fs.doc(db, PROMPT_COLLECTION, 'current'));
       await batch.commit();
-    } catch (e) {
-      console.error('Reset error:', e);
-    }
+    } catch (e) { console.error('Reset error:', e); }
   };
 
-  const handleReset = () => {
-    if (window.confirm('Clear the canvas for both of you?')) doReset(true);
-  };
+  const handleReset = () => { if (window.confirm('Clear the canvas for both of you?')) doReset(true); };
 
   const handleUndo = async () => {
     if (!db || !fs || myStrokes.length === 0) return;
-    const last = myStrokes[myStrokes.length - 1];
-    try {
-      await fs.deleteDoc(fs.doc(db, STROKES_COLLECTION, last.id));
-    } catch (e) {
-      console.error('Undo error:', e);
-    }
+    try { await fs.deleteDoc(fs.doc(db, STROKES_COLLECTION, myStrokes[myStrokes.length - 1].id)); }
+    catch (e) { console.error('Undo error:', e); }
   };
 
   const getPos = (e) => {
@@ -231,8 +198,7 @@ export default function DrawingCanvas({ name }) {
       ctx.beginPath();
       ctx.strokeStyle = isEraser ? '#fafafa' : selectedColor;
       ctx.lineWidth = isEraser ? selectedWidth * 2.5 : selectedWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       ctx.moveTo(lastPos.current.x, lastPos.current.y);
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
@@ -248,45 +214,32 @@ export default function DrawingCanvas({ name }) {
     if (points.length < 2 || !db || !fs) return;
     try {
       await fs.addDoc(fs.collection(db, STROKES_COLLECTION), {
-        points,
-        color: isEraser ? '#fafafa' : selectedColor,
+        points, color: isEraser ? '#fafafa' : selectedColor,
         width: isEraser ? selectedWidth * 2.5 : selectedWidth,
-        author: name,
-        timestamp: fs.serverTimestamp(),
+        author: name, timestamp: fs.serverTimestamp(),
       });
-    } catch (e) {
-      console.error('Stroke save error:', e);
-    }
+    } catch (e) { console.error('Stroke save error:', e); }
     currentStroke.current = [];
   };
 
   if (!isMounted) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-400 text-sm">Loading canvas...</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64 text-purple-300 text-sm">Loading canvas...</div>;
   }
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 160px)' }}>
+      {/* Presence indicator */}
       <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex items-center gap-2">
-          {otherPersonPresent ? (
-            <>
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block" />
-              <span className="text-xs text-gray-500">{otherName} is here</span>
-            </>
-          ) : (
-            <>
-              <span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />
-              <span className="text-xs text-gray-400">{otherName} is away</span>
-            </>
-          )}
+          <span className={`w-2 h-2 rounded-full inline-block ${otherPersonPresent ? 'bg-green-400 animate-pulse' : 'bg-purple-500/40'}`} />
+          <span className="text-xs text-purple-300">
+            {otherPersonPresent ? `${otherName} is here` : `${otherName} is away`}
+          </span>
         </div>
-        <span className="text-xs text-gray-400">You: <strong className="text-gray-600">{name}</strong></span>
+        <span className="text-xs text-purple-400">You: <strong className="text-purple-200">{name}</strong></span>
       </div>
 
+      {/* Prompt bar */}
       <div className="mb-2">
         {isEditingPrompt ? (
           <div className="flex gap-2 items-center">
@@ -295,39 +248,33 @@ export default function DrawingCanvas({ name }) {
               value={promptInput}
               onChange={(e) => setPromptInput(e.target.value)}
               placeholder="Enter a prompt..."
-              className="flex-1 text-xs px-3 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-400"
+              className="flex-1 text-xs px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-purple-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
             />
-            <button onClick={() => savePrompt(promptInput)} className="text-xs px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Set</button>
-            <button onClick={() => setIsEditingPrompt(false)} className="text-xs px-2 py-2 text-gray-400 hover:text-gray-600">✕</button>
+            <button onClick={() => savePrompt(promptInput)} className="text-xs px-3 py-2 bg-pink-600/60 text-white rounded-lg hover:bg-pink-600 transition-colors">Set</button>
+            <button onClick={() => setIsEditingPrompt(false)} className="text-xs px-2 py-2 text-purple-400 hover:text-purple-200">✕</button>
           </div>
         ) : (
           <button
             onClick={() => { setPromptInput(prompt); setIsEditingPrompt(true); }}
-            className="w-full text-left text-xs px-3 py-2 rounded-lg border border-dashed border-gray-200 text-gray-400 hover:border-purple-300 hover:text-purple-500 transition-colors"
+            className="w-full text-left text-xs px-3 py-2 rounded-lg border border-dashed border-white/20 text-purple-400 hover:border-pink-400/50 hover:text-pink-300 transition-colors"
           >
             {prompt ? `✏️ ${prompt}` : '+ Add a prompt for both of you'}
           </button>
         )}
       </div>
 
-      <div
-        className="relative flex-1 rounded-xl overflow-hidden border border-gray-200 shadow-inner bg-gray-50"
-        style={{ touchAction: 'none' }}
-      >
+      {/* Canvas */}
+      <div className="relative flex-1 rounded-xl overflow-hidden border border-white/10 shadow-inner bg-gray-50" style={{ touchAction: 'none' }}>
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
           style={{ cursor: isEraser ? 'cell' : 'crosshair', touchAction: 'none' }}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
-          onMouseLeave={endDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={endDrawing}
+          onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={endDrawing} onMouseLeave={endDrawing}
+          onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={endDrawing}
         />
       </div>
 
+      {/* Controls */}
       <div className="mt-3 space-y-2">
         <div className="flex gap-1.5 flex-wrap justify-center">
           {COLORS.map((color) => (
@@ -336,12 +283,10 @@ export default function DrawingCanvas({ name }) {
               onClick={() => { setSelectedColor(color); setIsEraser(false); }}
               className="rounded-full transition-transform hover:scale-110"
               style={{
-                width: 24,
-                height: 24,
-                backgroundColor: color,
+                width: 24, height: 24, backgroundColor: color,
                 border: selectedColor === color && !isEraser
-                  ? '3px solid #8b5cf6'
-                  : color === '#ffffff' ? '2px solid #e5e7eb' : '2px solid transparent',
+                  ? '3px solid #ec4899'
+                  : color === '#ffffff' ? '2px solid rgba(255,255,255,0.3)' : '2px solid transparent',
                 transform: selectedColor === color && !isEraser ? 'scale(1.2)' : 'scale(1)',
               }}
             />
@@ -354,30 +299,30 @@ export default function DrawingCanvas({ name }) {
               <button
                 key={w}
                 onClick={() => { setSelectedWidth(w); setIsEraser(false); }}
-                className={`flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors ${selectedWidth === w && !isEraser ? 'ring-2 ring-purple-500' : ''}`}
+                className={`flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors ${selectedWidth === w && !isEraser ? 'ring-2 ring-pink-400' : ''}`}
                 style={{ width: 32, height: 32 }}
               >
-                <div className="rounded-full bg-gray-700" style={{ width: Math.min(w + 4, 20), height: Math.min(w + 4, 20) }} />
+                <div className="rounded-full bg-white/70" style={{ width: Math.min(w + 4, 20), height: Math.min(w + 4, 20) }} />
               </button>
             ))}
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsEraser(!isEraser)}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${isEraser ? 'bg-purple-100 border-purple-400 text-purple-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${isEraser ? 'bg-pink-500/20 border-pink-400/50 text-pink-300' : 'bg-white/5 border-white/20 text-purple-300 hover:border-white/30'}`}
             >
               Eraser
             </button>
             <button
               onClick={handleUndo}
               disabled={myStrokes.length === 0}
-              className="text-xs px-3 py-1.5 rounded-lg border bg-white border-gray-200 text-gray-500 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="text-xs px-3 py-1.5 rounded-lg border bg-white/5 border-white/20 text-purple-300 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               Undo
             </button>
             <button
               onClick={handleReset}
-              className="text-xs px-3 py-1.5 rounded-lg border bg-white border-red-200 text-red-400 hover:bg-red-50 hover:border-red-300 transition-colors"
+              className="text-xs px-3 py-1.5 rounded-lg border bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
             >
               Clear
             </button>
