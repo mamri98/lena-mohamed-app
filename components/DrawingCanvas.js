@@ -1,7 +1,7 @@
 // components/DrawingCanvas.js
-// CHANGED: Fixed canvas sizing to be fully responsive across orientations (landscape iPad, portrait mobile, desktop).
-//          Replaced hardcoded calc(100vh - 160px) with flex-based layout + ResizeObserver on the canvas container.
-//          Canvas now fills exactly the space available to it, regardless of screen size or orientation.
+// CHANGED: Added landscape layout mode — detects orientation and switches to a
+// horizontal layout where the canvas fills the left and controls become a compact
+// right-side panel. Portrait mode is unchanged.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
@@ -18,7 +18,7 @@ const META_COLLECTION = 'canvasMeta';
 
 export default function DrawingCanvas({ name }) {
   const canvasRef = useRef(null);
-  const canvasContainerRef = useRef(null); // NEW: ref on the container, not the window
+  const canvasContainerRef = useRef(null);
   const isDrawing = useRef(false);
   const currentStroke = useRef([]);
   const lastPos = useRef(null);
@@ -36,6 +36,21 @@ export default function DrawingCanvas({ name }) {
   const [promptInput, setPromptInput] = useState('');
   const [isEditingPrompt, setIsEditingPrompt] = useState(false);
   const [myStrokes, setMyStrokes] = useState([]);
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  // Detect orientation — delay after orientationchange because dimensions
+  // aren't updated yet at the moment the event fires on iOS/Android
+  useEffect(() => {
+    const check = () => setIsLandscape(window.innerWidth > window.innerHeight);
+    const delayedCheck = () => setTimeout(check, 100);
+    check();
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', delayedCheck);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', delayedCheck);
+    };
+  }, []);
 
   useEffect(() => {
     setIsMounted(true);
@@ -101,24 +116,18 @@ export default function DrawingCanvas({ name }) {
     strokes.forEach((s) => drawStroke(ctx, s));
   }, [drawStroke]);
 
-  // NEW: Resize based on the container's actual dimensions, not window
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = canvasContainerRef.current;
     if (!canvas || !container) return;
-
     const dpr = window.devicePixelRatio || 1;
     const w = container.clientWidth;
     const h = container.clientHeight;
-
-    // Avoid resize if dimensions haven't changed (prevents redraw flicker)
     if (canvas.width === w * dpr && canvas.height === h * dpr) return;
-
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     canvas.style.width = `${w}px`;
     canvas.style.height = `${h}px`;
-
     const ctx = getCtx();
     ctx.scale(dpr, dpr);
     ctx.fillStyle = '#fafafa';
@@ -126,26 +135,15 @@ export default function DrawingCanvas({ name }) {
     redrawAllStrokes(strokesCache.current);
   }, [redrawAllStrokes]);
 
-  // NEW: Use ResizeObserver on the container instead of window resize
   useEffect(() => {
     if (!isMounted) return;
-
     const container = canvasContainerRef.current;
     if (!container) return;
-
-    // Initial size
     const timer = setTimeout(resizeCanvas, 50);
-
-    const observer = new ResizeObserver(() => {
-      resizeCanvas();
-    });
+    const observer = new ResizeObserver(() => resizeCanvas());
     observer.observe(container);
-
-    return () => {
-      clearTimeout(timer);
-      observer.disconnect();
-    };
-  }, [isMounted, resizeCanvas]);
+    return () => { clearTimeout(timer); observer.disconnect(); };
+  }, [isMounted, resizeCanvas, isLandscape]); // re-run when orientation changes
 
   useEffect(() => {
     if (!db || !fs || !name) return;
@@ -252,45 +250,202 @@ export default function DrawingCanvas({ name }) {
     return <div className="flex items-center justify-center h-64 text-purple-300 text-sm">Loading canvas...</div>;
   }
 
-  return (
-    // NEW: Use h-full + flex-col so this fills whatever space FeatureContainer gives it
-    <div className="flex flex-col h-full min-h-0">
-      {/* Presence indicator */}
-      <div className="flex items-center justify-between mb-2 px-1 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full inline-block ${otherPersonPresent ? 'bg-green-400 animate-pulse' : 'bg-purple-500/40'}`} />
-          <span className="text-xs text-purple-300">
-            {otherPersonPresent ? `${otherName} is here` : `${otherName} is away`}
-          </span>
+  // ─── Shared controls (used in both layouts) ───────────────────────────────
+
+  const colorPalette = (
+    <div className={`flex flex-wrap gap-1.5 justify-center`}>
+      {COLORS.map((color) => (
+        <button
+          key={color}
+          onClick={() => { setSelectedColor(color); setIsEraser(false); }}
+          className="rounded-full transition-transform hover:scale-110 flex-shrink-0"
+          style={{
+            width: 22, height: 22, backgroundColor: color,
+            border: selectedColor === color && !isEraser
+              ? '3px solid #ec4899'
+              : color === '#ffffff' ? '2px solid rgba(255,255,255,0.3)' : '2px solid transparent',
+            transform: selectedColor === color && !isEraser ? 'scale(1.2)' : 'scale(1)',
+          }}
+        />
+      ))}
+    </div>
+  );
+
+  const strokePicker = (
+    <div className={`flex ${isLandscape ? 'flex-col items-center' : 'flex-row'} gap-1.5`}>
+      {STROKE_WIDTHS.map((w) => (
+        <button
+          key={w}
+          onClick={() => { setSelectedWidth(w); setIsEraser(false); }}
+          className={`flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors flex-shrink-0 ${selectedWidth === w && !isEraser ? 'ring-2 ring-pink-400' : ''}`}
+          style={{ width: 30, height: 30 }}
+        >
+          <div className="rounded-full bg-white/70" style={{ width: Math.min(w + 4, 20), height: Math.min(w + 4, 20) }} />
+        </button>
+      ))}
+    </div>
+  );
+
+  const actionButtons = (
+    <div className={`flex ${isLandscape ? 'flex-col' : 'flex-row'} gap-1.5`}>
+      <button
+        onClick={() => setIsEraser(!isEraser)}
+        className={`text-xs px-2 py-1.5 rounded-lg border transition-colors ${isEraser ? 'bg-pink-500/20 border-pink-400/50 text-pink-300' : 'bg-white/5 border-white/20 text-purple-300 hover:border-white/30'}`}
+      >
+        Eraser
+      </button>
+      <button
+        onClick={handleUndo}
+        disabled={myStrokes.length === 0}
+        className="text-xs px-2 py-1.5 rounded-lg border bg-white/5 border-white/20 text-purple-300 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      >
+        Undo
+      </button>
+      <button
+        onClick={handleReset}
+        className="text-xs px-2 py-1.5 rounded-lg border bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+      >
+        Clear
+      </button>
+    </div>
+  );
+
+  const presenceBar = (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-1.5">
+        <span className={`w-2 h-2 rounded-full inline-block flex-shrink-0 ${otherPersonPresent ? 'bg-green-400 animate-pulse' : 'bg-purple-500/40'}`} />
+        <span className="text-xs text-purple-300 truncate">
+          {otherPersonPresent ? `${otherName} is here` : `${otherName} is away`}
+        </span>
+      </div>
+      <span className="text-xs text-purple-400 ml-2 flex-shrink-0">
+        <strong className="text-purple-200">{name}</strong>
+      </span>
+    </div>
+  );
+
+  const promptBar = isEditingPrompt ? (
+    <div className="flex gap-1.5 items-center">
+      <input
+        type="text"
+        value={promptInput}
+        onChange={(e) => setPromptInput(e.target.value)}
+        placeholder="Enter a prompt..."
+        className="flex-1 text-xs px-2 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-purple-400 focus:outline-none focus:ring-1 focus:ring-pink-400 min-w-0"
+      />
+      <button onClick={() => savePrompt(promptInput)} className="text-xs px-2 py-1.5 bg-pink-600/60 text-white rounded-lg hover:bg-pink-600 transition-colors flex-shrink-0">Set</button>
+      <button onClick={() => setIsEditingPrompt(false)} className="text-xs px-1 py-1.5 text-purple-400 hover:text-purple-200 flex-shrink-0">✕</button>
+    </div>
+  ) : (
+    <button
+      onClick={() => { setPromptInput(prompt); setIsEditingPrompt(true); }}
+      className="w-full text-left text-xs px-2 py-1.5 rounded-lg border border-dashed border-white/20 text-purple-400 hover:border-pink-400/50 hover:text-pink-300 transition-colors truncate"
+    >
+      {prompt ? `✏️ ${prompt}` : '+ Add a prompt'}
+    </button>
+  );
+
+  // ─── LANDSCAPE layout ─────────────────────────────────────────────────────
+  if (isLandscape) {
+    return (
+      <div className="flex flex-row h-full min-h-0 gap-2">
+        {/* Canvas — takes up all available width */}
+        <div
+          ref={canvasContainerRef}
+          className="relative flex-1 min-w-0 rounded-xl overflow-hidden border border-white/10 shadow-inner bg-gray-50"
+          style={{ touchAction: 'none' }}
+        >
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full"
+            style={{ cursor: isEraser ? 'cell' : 'crosshair', touchAction: 'none' }}
+            onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={endDrawing} onMouseLeave={endDrawing}
+            onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={endDrawing}
+          />
         </div>
-        <span className="text-xs text-purple-400">You: <strong className="text-purple-200">{name}</strong></span>
-      </div>
 
-      {/* Prompt bar */}
-      <div className="mb-2 flex-shrink-0">
-        {isEditingPrompt ? (
-          <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              value={promptInput}
-              onChange={(e) => setPromptInput(e.target.value)}
-              placeholder="Enter a prompt..."
-              className="flex-1 text-xs px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-purple-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
-            />
-            <button onClick={() => savePrompt(promptInput)} className="text-xs px-3 py-2 bg-pink-600/60 text-white rounded-lg hover:bg-pink-600 transition-colors">Set</button>
-            <button onClick={() => setIsEditingPrompt(false)} className="text-xs px-2 py-2 text-purple-400 hover:text-purple-200">✕</button>
+        {/* Right sidebar — compact vertical controls */}
+        <div className="flex flex-col gap-2 w-14 flex-shrink-0 justify-between py-1">
+          {/* Presence dot */}
+          <div className="flex flex-col items-center gap-1">
+            <span className={`w-2 h-2 rounded-full ${otherPersonPresent ? 'bg-green-400 animate-pulse' : 'bg-purple-500/40'}`} />
+            <span className="text-purple-400" style={{ fontSize: 9, textAlign: 'center', lineHeight: 1.2 }}>
+              {otherPersonPresent ? `${otherName} ✓` : otherName}
+            </span>
           </div>
-        ) : (
-          <button
-            onClick={() => { setPromptInput(prompt); setIsEditingPrompt(true); }}
-            className="w-full text-left text-xs px-3 py-2 rounded-lg border border-dashed border-white/20 text-purple-400 hover:border-pink-400/50 hover:text-pink-300 transition-colors"
-          >
-            {prompt ? `✏️ ${prompt}` : '+ Add a prompt for both of you'}
-          </button>
-        )}
+
+          {/* Color palette — 2 column grid */}
+          <div className="grid grid-cols-2 gap-1 justify-items-center">
+            {COLORS.map((color) => (
+              <button
+                key={color}
+                onClick={() => { setSelectedColor(color); setIsEraser(false); }}
+                className="rounded-full flex-shrink-0"
+                style={{
+                  width: 18, height: 18, backgroundColor: color,
+                  border: selectedColor === color && !isEraser
+                    ? '2px solid #ec4899'
+                    : color === '#ffffff' ? '1px solid rgba(255,255,255,0.3)' : '1px solid transparent',
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Stroke widths */}
+          <div className="flex flex-col items-center gap-1">
+            {STROKE_WIDTHS.map((w) => (
+              <button
+                key={w}
+                onClick={() => { setSelectedWidth(w); setIsEraser(false); }}
+                className={`flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors ${selectedWidth === w && !isEraser ? 'ring-2 ring-pink-400' : ''}`}
+                style={{ width: 26, height: 26 }}
+              >
+                <div className="rounded-full bg-white/70" style={{ width: Math.min(w + 2, 16), height: Math.min(w + 2, 16) }} />
+              </button>
+            ))}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => setIsEraser(!isEraser)}
+              className={`text-center rounded-lg border transition-colors leading-tight py-1 ${isEraser ? 'bg-pink-500/20 border-pink-400/50 text-pink-300' : 'bg-white/5 border-white/20 text-purple-300'}`}
+              style={{ fontSize: 9 }}
+            >
+              Erase
+            </button>
+            <button
+              onClick={handleUndo}
+              disabled={myStrokes.length === 0}
+              className="text-center rounded-lg border bg-white/5 border-white/20 text-purple-300 disabled:opacity-30 py-1"
+              style={{ fontSize: 9 }}
+            >
+              Undo
+            </button>
+            <button
+              onClick={handleReset}
+              className="text-center rounded-lg border bg-red-500/10 border-red-500/20 text-red-400 py-1"
+              style={{ fontSize: 9 }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── PORTRAIT layout (unchanged) ──────────────────────────────────────────
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center justify-between mb-2 px-1 flex-shrink-0">
+        {presenceBar}
       </div>
 
-      {/* Canvas — flex-1 + min-h-0 so it stretches to fill remaining space */}
+      <div className="mb-2 flex-shrink-0">
+        {promptBar}
+      </div>
+
       <div
         ref={canvasContainerRef}
         className="relative flex-1 min-h-0 rounded-xl overflow-hidden border border-white/10 shadow-inner bg-gray-50"
@@ -305,59 +460,11 @@ export default function DrawingCanvas({ name }) {
         />
       </div>
 
-      {/* Controls */}
       <div className="mt-3 space-y-2 flex-shrink-0">
-        <div className="flex gap-1.5 flex-wrap justify-center">
-          {COLORS.map((color) => (
-            <button
-              key={color}
-              onClick={() => { setSelectedColor(color); setIsEraser(false); }}
-              className="rounded-full transition-transform hover:scale-110"
-              style={{
-                width: 24, height: 24, backgroundColor: color,
-                border: selectedColor === color && !isEraser
-                  ? '3px solid #ec4899'
-                  : color === '#ffffff' ? '2px solid rgba(255,255,255,0.3)' : '2px solid transparent',
-                transform: selectedColor === color && !isEraser ? 'scale(1.2)' : 'scale(1)',
-              }}
-            />
-          ))}
-        </div>
-
+        {colorPalette}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            {STROKE_WIDTHS.map((w) => (
-              <button
-                key={w}
-                onClick={() => { setSelectedWidth(w); setIsEraser(false); }}
-                className={`flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors ${selectedWidth === w && !isEraser ? 'ring-2 ring-pink-400' : ''}`}
-                style={{ width: 32, height: 32 }}
-              >
-                <div className="rounded-full bg-white/70" style={{ width: Math.min(w + 4, 20), height: Math.min(w + 4, 20) }} />
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsEraser(!isEraser)}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${isEraser ? 'bg-pink-500/20 border-pink-400/50 text-pink-300' : 'bg-white/5 border-white/20 text-purple-300 hover:border-white/30'}`}
-            >
-              Eraser
-            </button>
-            <button
-              onClick={handleUndo}
-              disabled={myStrokes.length === 0}
-              className="text-xs px-3 py-1.5 rounded-lg border bg-white/5 border-white/20 text-purple-300 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              Undo
-            </button>
-            <button
-              onClick={handleReset}
-              className="text-xs px-3 py-1.5 rounded-lg border bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
-            >
-              Clear
-            </button>
-          </div>
+          {strokePicker}
+          {actionButtons}
         </div>
       </div>
     </div>
