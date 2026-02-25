@@ -1,5 +1,8 @@
 // pages/index.js
-// CHANGED: Added 'drawing' feature to FEATURES object and dynamic import for DrawingCanvas
+// CHANGED: Wrapped app in a viewport-locked flex column (h-[100dvh]) so height
+// flows correctly to FeatureContainer and DrawingCanvas in landscape mobile.
+// The <main> element now uses flex-1 + min-h-0 + overflow-y-auto so it fills
+// remaining space after the UserCard header without overflowing the screen.
 
 import Head from 'next/head';
 import { useEffect, useState, useCallback } from 'react';
@@ -51,7 +54,6 @@ const MissYouNotification = dynamic(() => import('../components/MissYouNotificat
   loading: () => null
 });
 
-// NEW: Drawing canvas
 const DrawingCanvas = dynamic(() => import('../components/DrawingCanvas'), {
   ssr: false,
   loading: () => <div className="p-4 text-center">Loading canvas...</div>
@@ -131,7 +133,6 @@ const FEATURES = {
     ),
     description: "Our shared notes<3"
   },
-  // NEW: Drawing canvas feature
   drawing: {
     title: 'Draw Together',
     color: 'pink',
@@ -171,21 +172,29 @@ export default function Home() {
     setActiveFeature(null);
   }, []);
   
+  const isFullscreenFeature = activeFeature === 'document' || activeFeature === 'drawing';
+
   function renderFeatureContent() {
     switch (activeFeature) {
-      case 'mood': return <MoodTracker name={name} />;
-      case 'selfie': return <DailySelfie name={name} />;
-      case 'quran': return <DailyQuranVerse />;
-      case 'links': return <LinkShare name={name} />;
+      case 'mood':     return <MoodTracker name={name} />;
+      case 'selfie':   return <DailySelfie name={name} />;
+      case 'quran':    return <DailyQuranVerse />;
+      case 'links':    return <LinkShare name={name} />;
       case 'marriage': return <MarriageTips />;
       case 'document': return <SharedDocument />;
-      case 'drawing': return <DrawingCanvas name={name} />;  // NEW
-      default: return null;
+      case 'drawing':  return <DrawingCanvas name={name} />;
+      default:         return null;
     }
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a0533] to-[#2d0a5e]">
+    // KEY CHANGE: h-[100dvh] + flex-col locks the entire app to the true visible
+    // viewport height in both portrait AND landscape, on all devices.
+    // overflow-hidden prevents the page from scrolling when drawing is open.
+    <div
+      className="bg-gradient-to-b from-[#1a0533] to-[#2d0a5e] flex flex-col overflow-hidden"
+      style={{ height: '100dvh' }}
+    >
       <Head>
         <title>Lena & Mohamed</title>
         <link rel="icon" href="/favicon.ico" />
@@ -201,11 +210,20 @@ export default function Home() {
 
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       
-      <div className={appReady ? ANIMATIONS.CONTENT_FADE_IN : 'hidden'}>
+      <div className={`flex flex-col flex-1 min-h-0 ${appReady ? ANIMATIONS.CONTENT_FADE_IN : 'hidden'}`}>
         <MissYouNotification name={name} />
+
+        {/* UserCard is fixed height at top */}
         <UserCard name={name} onToggle={handleToggleName} />
 
-        <main className={`max-w-md mx-auto px-4 ${activeFeature === 'document' || activeFeature === 'drawing' ? 'pt-2 pb-0' : 'py-6'}`}>
+        {/* main fills all remaining height; scrollable for normal features, locked for drawing */}
+        <main
+          className={`flex-1 min-h-0 max-w-md w-full mx-auto px-4 ${
+            isFullscreenFeature
+              ? 'overflow-hidden flex flex-col pt-2'
+              : 'overflow-y-auto py-6'
+          }`}
+        >
           {activeFeature && (
             <FeatureContainer
               title={FEATURES[activeFeature]?.title || ''}
@@ -218,30 +236,30 @@ export default function Home() {
           )}
           
           {!activeFeature && (
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              {Object.entries(FEATURES).map(([key, feature]) => (
-                <DashboardItem
-                  key={key}
-                  icon={feature.icon}
-                  title={feature.title}
-                  description={feature.description}
-                  color={feature.color}
-                  onClick={() => selectFeature(key)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                {Object.entries(FEATURES).map(([key, feature]) => (
+                  <DashboardItem
+                    key={key}
+                    icon={feature.icon}
+                    title={feature.title}
+                    description={feature.description}
+                    color={feature.color}
+                    onClick={() => selectFeature(key)}
+                  />
+                ))}
+              </div>
+
+              <div className="pb-16 text-center">
+                <MissYouButton name={name} />
+                <p className="text-purple-200 text-sm mt-2">Made with love for my bunny 💜</p>
+              </div>
+            </>
           )}
         </main>
-
-        {activeFeature !== 'document' && activeFeature !== 'drawing' && (
-          <footer className="max-w-md mx-auto px-4 pb-16 text-center">
-            {!activeFeature && <MissYouButton name={name} />}
-            <p className="text-purple-200 text-sm mt-2">Made with love for my bunny 💜</p>
-          </footer>
-        )}
-        
-        <InstallPrompt />
       </div>
+
+      <InstallPrompt />
     </div>
   );
 }

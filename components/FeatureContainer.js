@@ -1,5 +1,7 @@
 // components/FeatureContainer.js
-// CHANGED: Card bg changed to bg-white/10 backdrop-blur, title/close button colors updated for dark theme
+// CHANGED: Removed hardcoded calc(100dvh - ...) height. Now uses h-full to fill
+// whatever the parent <main> provides. This works because index.js now properly
+// locks the page to 100dvh and passes height down via flex layout.
 
 import { useState, useEffect } from 'react';
 import { ANIMATIONS, createAnimationController } from '../utils/app-animations';
@@ -51,16 +53,14 @@ export default function FeatureContainer({ title, color, isActive, onClose, chil
   const textColorClass = TEXT_COLOR_CLASSES[color] || 'text-purple-200';
   const isFullHeight = isDocumentView || isDrawingView;
 
-  const containerStyle = isFullHeight
-    ? { height: 'calc(100vh - 120px)', maxHeight: 'unset', display: 'flex', flexDirection: 'column', paddingBottom: '8px', overflow: 'visible' }
-    : { overflow: 'visible' };
-
   return (
     <div
-      className={`bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl shadow-md p-4 mb-4 ${animationClass}`}
-      style={containerStyle}
+      className={`bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl shadow-md p-4 mb-4 ${animationClass} ${
+        isFullHeight ? 'flex flex-col h-full overflow-hidden' : ''
+      }`}
     >
-      <div className={`flex justify-between items-center ${isFullHeight ? 'mb-1' : 'mb-4'}`}>
+      {/* Header — never shrinks */}
+      <div className={`flex justify-between items-center flex-shrink-0 ${isFullHeight ? 'mb-1' : 'mb-4'}`}>
         <h2 className={`text-xl font-semibold ${textColorClass}`}>{title}</h2>
         <button
           onClick={onClose}
@@ -73,7 +73,8 @@ export default function FeatureContainer({ title, color, isActive, onClose, chil
         </button>
       </div>
 
-      <div className="overflow-visible flex-1 flex flex-col">
+      {/* Content — flex-1 + min-h-0 lets DrawingCanvas fill this space */}
+      <div className={`${isFullHeight ? 'flex-1 min-h-0 flex flex-col overflow-hidden' : 'overflow-visible'}`}>
         {children}
       </div>
     </div>
