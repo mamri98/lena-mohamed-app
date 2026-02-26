@@ -1,6 +1,7 @@
 // components/Questions.js
-// NEW FILE: Full Questions feature with Categories/Topics navigation,
-// daily question assignment, answer submission, and partner answer reveal.
+// CHANGED: Fixed stale Firestore assignment bug — when a stored questionId no longer
+// exists in the current questions pool, re-pick a fresh question and overwrite the assignment
+// instead of incorrectly showing "All done".
 
 import { useState, useEffect } from 'react';
 import { CATEGORIES, TOPICS, questions } from '../data/questions.js';
@@ -264,8 +265,24 @@ function QuestionScreen({ category, topic, name, partnerName, onBack }) {
           await fs.setDoc(assignRef, { questionId: qId, date: todayKey(), category, topic });
         }
 
-        const q = questions.find(q => q.id === qId);
-        if (!q) { setNoQuestions(true); setLoading(false); return; }
+        // CHANGED: If stored qId no longer exists in the current question pool,
+        // treat it as stale — re-pick a fresh question and overwrite the assignment.
+        let q = questions.find(q => q.id === qId);
+        if (!q) {
+          const answersSnap = await fs.getDocs(
+            fs.query(
+              fs.collection(db, 'questionAnswers'),
+              fs.where('category', '==', category),
+              fs.where('topic', '==', topic)
+            )
+          );
+          const usedIds = [...new Set(answersSnap.docs.map(d => d.data().questionId))];
+          const picked = pickDailyQuestion(category, topic, usedIds);
+          if (!picked) { setNoQuestions(true); setLoading(false); return; }
+          q = picked;
+          qId = picked.id;
+          await fs.setDoc(assignRef, { questionId: qId, date: todayKey(), category, topic });
+        }
         setQuestion(q);
 
         // Listen for answers in real-time
@@ -449,8 +466,6 @@ function SubCategoryGrid({ mode, name, partnerName, onSelect, onBack }) {
         const combos = {};
         snap.docs.forEach(d => {
           const data = d.data();
-          // In categories mode, track which category they answered today
-          // In topics mode, track which topic they answered today
           const key = mode === 'categories' ? data.category : data.topic;
           if (key) combos[key] = true;
         });
@@ -494,30 +509,18 @@ function SubCategoryGrid({ mode, name, partnerName, onSelect, onBack }) {
 export default function Questions({ name }) {
   const partnerName = name === 'Lena' ? 'Mohamed' : 'Lena';
 
-  // nav: 'home' | 'categories' | 'topics' | 'question'
   const [nav, setNav] = useState('home');
-  const [selectedMode, setSelectedMode] = useState(null); // 'categories' | 'topics'
+  const [selectedMode, setSelectedMode] = useState(null);
   const [selectedSubId, setSelectedSubId] = useState(null);
 
-  // Derived: when on question screen, what is the category and topic?
-  // If mode=categories, user picked a category → we pick a topic from the question
-  // If mode=topics, user picked a topic → we pick a category from the question
-  // For simplicity: we use the sub-id as both and let the question picker handle it
-  // Actually: we need both to look up. We'll derive from selected sub + first matching q.
   function getCategoryTopic() {
     if (!selectedSubId) return { category: null, topic: null };
     if (selectedMode === 'categories') {
-      // They picked a category. For the question screen, we need a topic too.
-      // We'll pass the category and null topic → question screen picks any topic
       return { category: selectedSubId, topic: null };
     } else {
       return { category: null, topic: selectedSubId };
     }
   }
-
-  // For the question screen, we pass both. When one is null, the question screen
-  // picks the best available question for that single filter.
-  // Let's simplify: question screen always gets both; when one is "any", pass 'any'.
 
   const handleSubSelect = (subId) => {
     setSelectedSubId(subId);
@@ -530,7 +533,6 @@ export default function Questions({ name }) {
     else setNav('home');
   };
 
-  // Question screen props
   const qCategory = selectedMode === 'categories' ? selectedSubId : 'any';
   const qTopic    = selectedMode === 'topics'     ? selectedSubId : 'any';
 
