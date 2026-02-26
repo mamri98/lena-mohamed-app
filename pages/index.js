@@ -1,6 +1,11 @@
 // pages/index.js
-// CHANGED: Added 'questions' feature to FEATURES object and dynamic import for Questions component
-// This makes 8 total widgets (balanced 2-column grid)
+// CHANGED:
+//   - Added isLandscape state + orientation detection
+//   - When drawing is active, outer wrapper becomes h-[100dvh] flex flex-col
+//     (fixes portrait canvas collapsing to a thin line — height chain now resolves)
+//   - Inner content div becomes flex-1 min-h-0 flex flex-col in drawing mode
+//   - <main> becomes flex-1 min-h-0 flex flex-col in drawing mode
+//   - max-w-md is only applied in portrait drawing mode (fixes landscape not filling width)
 
 import Head from 'next/head';
 import { useEffect, useState, useCallback } from 'react';
@@ -57,7 +62,6 @@ const DrawingCanvas = dynamic(() => import('../components/DrawingCanvas'), {
   loading: () => <div className="p-4 text-center">Loading canvas...</div>
 });
 
-// NEW: Questions feature
 const Questions = dynamic(() => import('../components/Questions'), {
   ssr: false,
   loading: () => <div className="p-4 text-center">Loading questions...</div>
@@ -150,7 +154,6 @@ const FEATURES = {
     ),
     description: "Let's draw together :)"
   },
-  // NEW: Questions feature — 8th widget, balances the grid
   questions: {
     title: 'Questions',
     color: 'rose',
@@ -171,6 +174,20 @@ export default function Home() {
   const [activeFeature, setActiveFeature] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
   const [appReady, setAppReady] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false); // NEW
+
+  // NEW: orientation detection — mirrors DrawingCanvas logic (delayed for iOS)
+  useEffect(() => {
+    const check = () => setIsLandscape(window.innerWidth > window.innerHeight);
+    const delayed = () => setTimeout(check, 100);
+    check();
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', delayed);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', delayed);
+    };
+  }, []);
 
   const handleSplashComplete = useCallback(() => {
     setShowSplash(false);
@@ -199,13 +216,33 @@ export default function Home() {
       case 'marriage':  return <MarriageTips />;
       case 'document':  return <SharedDocument />;
       case 'drawing':   return <DrawingCanvas name={name} />;
-      case 'questions': return <Questions name={name} />;  // NEW
+      case 'questions': return <Questions name={name} />;
       default:          return null;
     }
   }
 
+  const isDrawing = activeFeature === 'drawing';
+  const isFullscreen = activeFeature === 'document' || isDrawing;
+
+  // When drawing: outer wrapper locks to full viewport height so h-full resolves correctly
+  const outerClass = isDrawing
+    ? 'h-[100dvh] flex flex-col overflow-hidden bg-gradient-to-b from-[#1a0533] to-[#2d0a5e]'
+    : 'min-h-screen bg-gradient-to-b from-[#1a0533] to-[#2d0a5e]';
+
+  // When drawing: inner content div must also be flex-1 min-h-0 flex flex-col
+  const innerClass = appReady ? ANIMATIONS.CONTENT_FADE_IN : 'hidden';
+  const innerDrawingClass = isDrawing ? 'flex-1 min-h-0 flex flex-col' : '';
+
+  // <main> layout:
+  //   - drawing + landscape: full width, flex-1, no max-w cap
+  //   - drawing + portrait:  max-w-md centered, flex-1
+  //   - everything else:     normal max-w-md centered with py-6
+  const mainClass = isDrawing
+    ? `px-4 pt-2 pb-0 flex-1 min-h-0 flex flex-col ${!isLandscape ? 'max-w-md mx-auto w-full' : 'w-full'}`
+    : `max-w-md mx-auto px-4 ${isFullscreen ? 'pt-2 pb-0' : 'py-6'}`;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a0533] to-[#2d0a5e]">
+    <div className={outerClass}>
       <Head>
         <title>Lena & Mohamed</title>
         <link rel="icon" href="/favicon.ico" />
@@ -221,11 +258,11 @@ export default function Home() {
 
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
 
-      <div className={appReady ? ANIMATIONS.CONTENT_FADE_IN : 'hidden'}>
+      <div className={`${innerClass} ${innerDrawingClass}`}>
         <MissYouNotification name={name} />
         <UserCard name={name} onToggle={handleToggleName} />
 
-        <main className={`max-w-md mx-auto px-4 ${activeFeature === 'document' || activeFeature === 'drawing' ? 'pt-2 pb-0' : 'py-6'}`}>
+        <main className={mainClass}>
           {activeFeature && (
             <FeatureContainer
               title={FEATURES[activeFeature]?.title || ''}
