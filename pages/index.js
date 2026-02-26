@@ -1,8 +1,6 @@
 // pages/index.js
-// CHANGED: Wrapped app in a viewport-locked flex column (h-[100dvh]) so height
-// flows correctly to FeatureContainer and DrawingCanvas in landscape mobile.
-// The <main> element now uses flex-1 + min-h-0 + overflow-y-auto so it fills
-// remaining space after the UserCard header without overflowing the screen.
+// CHANGED: Added 'questions' feature to FEATURES object and dynamic import for Questions component
+// This makes 8 total widgets (balanced 2-column grid)
 
 import Head from 'next/head';
 import { useEffect, useState, useCallback } from 'react';
@@ -14,7 +12,7 @@ import FeatureContainer from '../components/FeatureContainer';
 import SplashScreen from '../components/SplashScreen';
 import { ANIMATIONS } from '../utils/app-animations';
 
-const MoodTracker = dynamic(() => import('../components/MoodTracker'), { 
+const MoodTracker = dynamic(() => import('../components/MoodTracker'), {
   ssr: false,
   loading: () => <div className="p-4 text-center">Loading mood tracker...</div>
 });
@@ -57,6 +55,12 @@ const MissYouNotification = dynamic(() => import('../components/MissYouNotificat
 const DrawingCanvas = dynamic(() => import('../components/DrawingCanvas'), {
   ssr: false,
   loading: () => <div className="p-4 text-center">Loading canvas...</div>
+});
+
+// NEW: Questions feature
+const Questions = dynamic(() => import('../components/Questions'), {
+  ssr: false,
+  loading: () => <div className="p-4 text-center">Loading questions...</div>
 });
 
 const FEATURES = {
@@ -145,7 +149,21 @@ const FEATURES = {
       </svg>
     ),
     description: "Let's draw together :)"
-  }
+  },
+  // NEW: Questions feature — 8th widget, balances the grid
+  questions: {
+    title: 'Questions',
+    color: 'rose',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        <line x1="9" y1="10" x2="9" y2="10"></line>
+        <line x1="12" y1="10" x2="12" y2="10"></line>
+        <line x1="15" y1="10" x2="15" y2="10"></line>
+      </svg>
+    ),
+    description: "Daily Q's for us"
+  },
 };
 
 export default function Home() {
@@ -153,48 +171,41 @@ export default function Home() {
   const [activeFeature, setActiveFeature] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
   const [appReady, setAppReady] = useState(false);
-  
+
   const handleSplashComplete = useCallback(() => {
     setShowSplash(false);
     setAppReady(true);
   }, []);
-  
+
   const handleToggleName = useCallback((newName) => {
     setName(newName);
     setActiveFeature(null);
   }, []);
-  
+
   const selectFeature = useCallback((feature) => {
     setActiveFeature(feature);
   }, []);
-  
+
   const closeFeature = useCallback(() => {
     setActiveFeature(null);
   }, []);
-  
-  const isFullscreenFeature = activeFeature === 'document' || activeFeature === 'drawing';
 
   function renderFeatureContent() {
     switch (activeFeature) {
-      case 'mood':     return <MoodTracker name={name} />;
-      case 'selfie':   return <DailySelfie name={name} />;
-      case 'quran':    return <DailyQuranVerse />;
-      case 'links':    return <LinkShare name={name} />;
-      case 'marriage': return <MarriageTips />;
-      case 'document': return <SharedDocument />;
-      case 'drawing':  return <DrawingCanvas name={name} />;
-      default:         return null;
+      case 'mood':      return <MoodTracker name={name} />;
+      case 'selfie':    return <DailySelfie name={name} />;
+      case 'quran':     return <DailyQuranVerse />;
+      case 'links':     return <LinkShare name={name} />;
+      case 'marriage':  return <MarriageTips />;
+      case 'document':  return <SharedDocument />;
+      case 'drawing':   return <DrawingCanvas name={name} />;
+      case 'questions': return <Questions name={name} />;  // NEW
+      default:          return null;
     }
   }
-  
+
   return (
-    // KEY CHANGE: h-[100dvh] + flex-col locks the entire app to the true visible
-    // viewport height in both portrait AND landscape, on all devices.
-    // overflow-hidden prevents the page from scrolling when drawing is open.
-    <div
-      className="bg-gradient-to-b from-[#1a0533] to-[#2d0a5e] flex flex-col overflow-hidden"
-      style={{ height: '100dvh' }}
-    >
+    <div className="min-h-screen bg-gradient-to-b from-[#1a0533] to-[#2d0a5e]">
       <Head>
         <title>Lena & Mohamed</title>
         <link rel="icon" href="/favicon.ico" />
@@ -209,21 +220,12 @@ export default function Home() {
       </Head>
 
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-      
-      <div className={`flex flex-col flex-1 min-h-0 ${appReady ? ANIMATIONS.CONTENT_FADE_IN : 'hidden'}`}>
-        <MissYouNotification name={name} />
 
-        {/* UserCard is fixed height at top */}
+      <div className={appReady ? ANIMATIONS.CONTENT_FADE_IN : 'hidden'}>
+        <MissYouNotification name={name} />
         <UserCard name={name} onToggle={handleToggleName} />
 
-        {/* main fills all remaining height; scrollable for normal features, locked for drawing */}
-        <main
-          className={`flex-1 min-h-0 w-full ${
-            isFullscreenFeature
-              ? 'overflow-hidden flex flex-col pt-1'
-              : 'overflow-y-auto py-6 px-4 max-w-md mx-auto'
-          }`}
-        >
+        <main className={`max-w-md mx-auto px-4 ${activeFeature === 'document' || activeFeature === 'drawing' ? 'pt-2 pb-0' : 'py-6'}`}>
           {activeFeature && (
             <FeatureContainer
               title={FEATURES[activeFeature]?.title || ''}
@@ -234,32 +236,32 @@ export default function Home() {
               {renderFeatureContent()}
             </FeatureContainer>
           )}
-          
-          {!activeFeature && (
-            <>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {Object.entries(FEATURES).map(([key, feature]) => (
-                  <DashboardItem
-                    key={key}
-                    icon={feature.icon}
-                    title={feature.title}
-                    description={feature.description}
-                    color={feature.color}
-                    onClick={() => selectFeature(key)}
-                  />
-                ))}
-              </div>
 
-              <div className="pb-16 text-center">
-                <MissYouButton name={name} />
-                <p className="text-purple-200 text-sm mt-2">Made with love for my bunny 💜</p>
-              </div>
-            </>
+          {!activeFeature && (
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              {Object.entries(FEATURES).map(([key, feature]) => (
+                <DashboardItem
+                  key={key}
+                  icon={feature.icon}
+                  title={feature.title}
+                  description={feature.description}
+                  color={feature.color}
+                  onClick={() => selectFeature(key)}
+                />
+              ))}
+            </div>
           )}
         </main>
-      </div>
 
-      <InstallPrompt />
+        {activeFeature !== 'document' && activeFeature !== 'drawing' && (
+          <footer className="max-w-md mx-auto px-4 pb-16 text-center">
+            {!activeFeature && <MissYouButton name={name} />}
+            <p className="text-purple-200 text-sm mt-2">Made with love for my bunny 💜</p>
+          </footer>
+        )}
+
+        <InstallPrompt />
+      </div>
     </div>
   );
 }
