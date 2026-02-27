@@ -6,6 +6,7 @@
 //   - Inner content div becomes flex-1 min-h-0 flex flex-col in drawing mode
 //   - <main> becomes flex-1 min-h-0 flex flex-col in drawing mode
 //   - max-w-md is only applied in portrait drawing mode (fixes landscape not filling width)
+//   - Added ChibiWidget as full-width top widget on dashboard
 
 import Head from 'next/head';
 import { useEffect, useState, useCallback } from 'react';
@@ -65,6 +66,16 @@ const DrawingCanvas = dynamic(() => import('../components/DrawingCanvas'), {
 const Questions = dynamic(() => import('../components/Questions'), {
   ssr: false,
   loading: () => <div className="p-4 text-center">Loading questions...</div>
+});
+
+// NEW: Chibi widget
+const ChibiWidget = dynamic(() => import('../components/ChibiWidget'), {
+  ssr: false,
+  loading: () => (
+    <div className="col-span-2 h-48 rounded-2xl border border-purple-500/30 bg-white/5 flex items-center justify-center">
+      <p className="text-purple-400 text-sm">Loading chibi...</p>
+    </div>
+  ),
 });
 
 const FEATURES = {
@@ -174,9 +185,8 @@ export default function Home() {
   const [activeFeature, setActiveFeature] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
   const [appReady, setAppReady] = useState(false);
-  const [isLandscape, setIsLandscape] = useState(false); // NEW
+  const [isLandscape, setIsLandscape] = useState(false);
 
-  // NEW: orientation detection — mirrors DrawingCanvas logic (delayed for iOS)
   useEffect(() => {
     const check = () => setIsLandscape(window.innerWidth > window.innerHeight);
     const delayed = () => setTimeout(check, 100);
@@ -224,19 +234,13 @@ export default function Home() {
   const isDrawing = activeFeature === 'drawing';
   const isFullscreen = activeFeature === 'document' || isDrawing;
 
-  // When drawing: outer wrapper locks to full viewport height so h-full resolves correctly
   const outerClass = isDrawing
     ? 'h-[100dvh] flex flex-col overflow-hidden bg-gradient-to-b from-[#1a0533] to-[#2d0a5e]'
     : 'min-h-screen bg-gradient-to-b from-[#1a0533] to-[#2d0a5e]';
 
-  // When drawing: inner content div must also be flex-1 min-h-0 flex flex-col
   const innerClass = appReady ? ANIMATIONS.CONTENT_FADE_IN : 'hidden';
   const innerDrawingClass = isDrawing ? 'flex-1 min-h-0 flex flex-col' : '';
 
-  // <main> layout:
-  //   - drawing + landscape: full width, flex-1, no max-w cap
-  //   - drawing + portrait:  max-w-md centered, flex-1
-  //   - everything else:     normal max-w-md centered with py-6
   const mainClass = isDrawing
     ? `px-4 pt-2 pb-0 flex-1 min-h-0 flex flex-col ${!isLandscape ? 'max-w-md mx-auto w-full' : 'w-full'}`
     : `max-w-md mx-auto px-4 ${isFullscreen ? 'pt-2 pb-0' : 'py-6'}`;
@@ -276,6 +280,9 @@ export default function Home() {
 
           {!activeFeature && (
             <div className="grid grid-cols-2 gap-4 mb-4">
+              {/* NEW: Chibi widget spans full width at the top */}
+              <ChibiWidget name={name} />
+
               {Object.entries(FEATURES).map(([key, feature]) => (
                 <DashboardItem
                   key={key}
