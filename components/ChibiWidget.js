@@ -1,13 +1,18 @@
 // components/ChibiWidget.js
-// NEW FILE: Interactive chibi widget with Canvas 2D bear (Mohamed) and bunny (Lena)
-// Features: idle animations, action animations, Firebase queue system, 24hr expiry
+// CHANGED:
+//   - Title updated to "Bunny and Bear" (in index.js FEATURES), subtitle to "Send love to each other"
+//   - Completely redrawn bear and bunny to match reference image (rounder, cuter, more accurate chibi)
+//   - Fixed animation sender bug: actions now use { self, other } keys mapped by sender, so
+//     the correct character always performs the action
+//   - Added xOffset to character positions for proximity animations (Kiss, Hug, Poke, Nuzzle)
+//     so characters physically move toward each other
+//   - Improved animation definitions with better expressiveness
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const BEAR_COLOR   = { body: '#8B6555', belly: '#C4A882', nose: '#5C3D2E', ear_inner: '#C4A882' };
-const BUNNY_COLOR  = { body: '#F0EDE8', belly: '#FAF7F4', nose: '#FFB6C1', ear_inner: '#FFB6C1' };
-const CHEEK_COLOR  = 'rgba(255, 182, 193, 0.5)';
+const BEAR_COLOR  = { body: '#C68642', bodyDark: '#A0522D', belly: '#E8C99A', nose: '#6B3A2A', ear_inner: '#E8A87C', cheek: 'rgba(220, 120, 80, 0.35)' };
+const BUNNY_COLOR = { body: '#F5F0EB', bodyDark: '#E8DDD5', belly: '#FDF9F7', nose: '#F4A7B9', ear_inner: '#F9C8D5', cheek: 'rgba(255, 182, 193, 0.5)' };
 
 const BEAR_ACTIONS  = ['Hug', 'Kiss', 'Wave', 'Pat head', 'Boop nose', 'High five'];
 const BUNNY_ACTIONS = ['Kiss', 'Poke', 'Wave', 'Throw heart', 'High five', 'Nuzzle'];
@@ -18,7 +23,7 @@ const ACTION_ICONS = {
   'Throw heart': '💝', 'Nuzzle': '🥰'
 };
 
-const EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+const EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 // ─── Canvas Drawing Helpers ───────────────────────────────────────────────────
 function roundRect(ctx, x, y, w, h, r) {
@@ -35,102 +40,131 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// ─── Character Drawers ────────────────────────────────────────────────────────
-
+// ─── Bear Drawing (matches reference: round brown bear, chubby, cute) ─────────
 function drawBear(ctx, x, y, scale, anim) {
-  const { breathOffset = 0, blinkT = 0, armAngle = 0, armReach = 0, headTilt = 0, jumpOffset = 0 } = anim;
+  const {
+    breathOffset = 0, blinkT = 0,
+    armAngle = 0, armReach = 0,
+    headTilt = 0, jumpOffset = 0,
+    xOffset = 0,
+  } = anim;
   const s = scale;
+  const bx = x + xOffset;
   const by = y + breathOffset + jumpOffset;
 
   ctx.save();
-  ctx.translate(x, by);
+  ctx.translate(bx, by);
 
-  // ── Body ──
+  // ── Body (chubby, round-bottomed) ──
   ctx.fillStyle = BEAR_COLOR.body;
-  roundRect(ctx, -18 * s, 10 * s, 36 * s, 32 * s, 12 * s);
+  ctx.beginPath();
+  ctx.ellipse(0, 22 * s, 20 * s, 22 * s, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // belly
+  // belly patch
   ctx.fillStyle = BEAR_COLOR.belly;
   ctx.beginPath();
-  ctx.ellipse(0, 24 * s, 10 * s, 12 * s, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 24 * s, 12 * s, 14 * s, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Left arm (idle) ──
+  // ── Left arm ──
   ctx.save();
-  ctx.translate(-18 * s, 18 * s);
-  ctx.rotate(-0.3 + armAngle);
+  ctx.translate(-18 * s, 16 * s);
+  ctx.rotate(-0.25 + armAngle * 0.3);
   ctx.fillStyle = BEAR_COLOR.body;
-  roundRect(ctx, -6 * s, 0, 12 * s, 20 * s, 6 * s);
+  ctx.beginPath();
+  ctx.ellipse(0, 9 * s, 6 * s, 9 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // paw
+  ctx.fillStyle = BEAR_COLOR.bodyDark;
+  ctx.beginPath();
+  ctx.ellipse(0, 18 * s, 5.5 * s, 4 * s, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // ── Right arm (action arm) ──
+  // ── Right arm (action arm — reaches toward bunny which is to the RIGHT) ──
   ctx.save();
-  ctx.translate(18 * s, 18 * s);
-  ctx.rotate(0.3 - armAngle + armReach);
+  ctx.translate(18 * s, 16 * s);
+  ctx.rotate(0.25 - armAngle * 0.3 - armReach * 0.9);
   ctx.fillStyle = BEAR_COLOR.body;
-  roundRect(ctx, -6 * s, 0, 12 * s, 20 * s, 6 * s);
+  ctx.beginPath();
+  ctx.ellipse(0, 9 * s, 6 * s, 9 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = BEAR_COLOR.bodyDark;
+  ctx.beginPath();
+  ctx.ellipse(0, 18 * s, 5.5 * s, 4 * s, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
   // ── Head ──
   ctx.save();
-  ctx.rotate(headTilt);
-  // ears
+  ctx.translate(0, -4 * s);
+  ctx.rotate(headTilt * 0.4);
+
+  // round ears
   ctx.fillStyle = BEAR_COLOR.body;
-  ctx.beginPath(); ctx.ellipse(-14 * s, -24 * s, 7 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(14 * s, -24 * s, 7 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill();
-  // ear inner
+  ctx.beginPath(); ctx.ellipse(-15 * s, -14 * s, 8 * s, 8 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(15 * s, -14 * s, 8 * s, 8 * s, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = BEAR_COLOR.ear_inner;
-  ctx.beginPath(); ctx.ellipse(-14 * s, -24 * s, 4 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(14 * s, -24 * s, 4 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-15 * s, -14 * s, 5 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(15 * s, -14 * s, 5 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
 
-  // head
+  // head circle
   ctx.fillStyle = BEAR_COLOR.body;
-  ctx.beginPath(); ctx.ellipse(0, -12 * s, 18 * s, 17 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, -10 * s, 19 * s, 18 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // snout
+  // muzzle
   ctx.fillStyle = BEAR_COLOR.belly;
-  ctx.beginPath(); ctx.ellipse(0, -5 * s, 9 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, -4 * s, 10 * s, 7.5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   // nose
   ctx.fillStyle = BEAR_COLOR.nose;
-  ctx.beginPath(); ctx.ellipse(0, -8 * s, 4 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, -8 * s, 4.5 * s, 3 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   // eyes
-  const eyeH = blinkT > 0.8 ? 1 : 4 * s;
+  const eyeH = blinkT > 0.8 ? 0.8 : 4.5 * s;
   ctx.fillStyle = '#2C1810';
-  ctx.beginPath(); ctx.ellipse(-7 * s, -16 * s, 3 * s, eyeH, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(7 * s, -16 * s, 3 * s, eyeH, 0, 0, Math.PI * 2); ctx.fill();
-
-  // eye shine
+  ctx.beginPath(); ctx.ellipse(-7 * s, -15 * s, 3.5 * s, eyeH, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(7 * s, -15 * s, 3.5 * s, eyeH, 0, 0, Math.PI * 2); ctx.fill();
   if (blinkT <= 0.8) {
     ctx.fillStyle = 'white';
-    ctx.beginPath(); ctx.ellipse(-6 * s, -17 * s, 1.2 * s, 1.2 * s, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(8 * s, -17 * s, 1.2 * s, 1.2 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-6 * s, -16.5 * s, 1.3 * s, 1.3 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(8 * s, -16.5 * s, 1.3 * s, 1.3 * s, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   // cheeks
-  ctx.fillStyle = CHEEK_COLOR;
-  ctx.beginPath(); ctx.ellipse(-11 * s, -11 * s, 5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(11 * s, -11 * s, 5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = BEAR_COLOR.cheek;
+  ctx.beginPath(); ctx.ellipse(-12 * s, -9 * s, 6 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(12 * s, -9 * s, 6 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
 
   // mouth
   ctx.strokeStyle = BEAR_COLOR.nose;
   ctx.lineWidth = 1.5 * s;
   ctx.beginPath();
-  ctx.moveTo(-3 * s, -3 * s);
-  ctx.quadraticCurveTo(0, -1 * s, 3 * s, -3 * s);
+  ctx.moveTo(-3.5 * s, -2.5 * s);
+  ctx.quadraticCurveTo(0, 0.5 * s, 3.5 * s, -2.5 * s);
   ctx.stroke();
 
   ctx.restore();
   ctx.restore();
 }
 
+// ─── Bunny Drawing (matches reference: white bunny, tall ears, sweet face) ──
 function drawBunny(ctx, x, y, scale, anim) {
-  const { breathOffset = 0, blinkT = 0, earWiggle = 0, armAngle = 0, armReach = 0, headTilt = 0, jumpOffset = 0 } = anim;
+  const {
+    breathOffset = 0, blinkT = 0, earWiggle = 0,
+    armAngle = 0, armReach = 0,
+    headTilt = 0, jumpOffset = 0,
+    xOffset = 0,
+  } = anim;
   const s = scale;
+  // Bunny is drawn in mirrored context (scale -1,1), so xOffset is negated externally
   const by = y + breathOffset + jumpOffset;
 
   ctx.save();
@@ -138,100 +172,135 @@ function drawBunny(ctx, x, y, scale, anim) {
 
   // ── Body ──
   ctx.fillStyle = BUNNY_COLOR.body;
-  roundRect(ctx, -16 * s, 10 * s, 32 * s, 30 * s, 12 * s);
+  ctx.beginPath();
+  ctx.ellipse(0, 22 * s, 17 * s, 20 * s, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // belly
   ctx.fillStyle = BUNNY_COLOR.belly;
-  ctx.beginPath(); ctx.ellipse(0, 23 * s, 9 * s, 11 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, 24 * s, 10 * s, 12 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // ── Left arm (idle) ──
+  // ── Left arm ──
   ctx.save();
-  ctx.translate(-16 * s, 16 * s);
-  ctx.rotate(-0.2 + armAngle);
+  ctx.translate(-15 * s, 15 * s);
+  ctx.rotate(-0.2 + armAngle * 0.3);
   ctx.fillStyle = BUNNY_COLOR.body;
-  roundRect(ctx, -5 * s, 0, 10 * s, 18 * s, 5 * s);
+  ctx.beginPath();
+  ctx.ellipse(0, 8 * s, 5 * s, 8 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = BUNNY_COLOR.ear_inner;
+  ctx.beginPath();
+  ctx.ellipse(0, 16 * s, 4.5 * s, 3.5 * s, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // ── Right arm (action arm) ──
+  // ── Right arm (action arm — bunny is mirrored, so this reaches LEFT = toward bear) ──
   ctx.save();
-  ctx.translate(16 * s, 16 * s);
-  ctx.rotate(0.2 - armAngle + armReach);
+  ctx.translate(15 * s, 15 * s);
+  ctx.rotate(0.2 - armAngle * 0.3 - armReach * 0.9);
   ctx.fillStyle = BUNNY_COLOR.body;
-  roundRect(ctx, -5 * s, 0, 10 * s, 18 * s, 5 * s);
+  ctx.beginPath();
+  ctx.ellipse(0, 8 * s, 5 * s, 8 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = BUNNY_COLOR.ear_inner;
+  ctx.beginPath();
+  ctx.ellipse(0, 16 * s, 4.5 * s, 3.5 * s, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
   // ── Head ──
   ctx.save();
-  ctx.rotate(headTilt);
+  ctx.translate(0, -4 * s);
+  ctx.rotate(headTilt * 0.4);
 
-  // long ears with wiggle
+  // tall ears (with wiggle)
+  const earBaseW = 6 * s, earBaseH = 26 * s, earInnerW = 3.5 * s, earInnerH = 20 * s;
+
   ctx.save();
-  ctx.translate(-9 * s, -28 * s);
-  ctx.rotate(-0.15 + earWiggle);
+  ctx.translate(-9 * s, -22 * s);
+  ctx.rotate(-0.12 + earWiggle);
   ctx.fillStyle = BUNNY_COLOR.body;
-  roundRect(ctx, -4 * s, -22 * s, 8 * s, 24 * s, 4 * s);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, earBaseW, earBaseH, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = BUNNY_COLOR.ear_inner;
-  roundRect(ctx, -2.5 * s, -20 * s, 5 * s, 18 * s, 2.5 * s);
+  ctx.beginPath();
+  ctx.ellipse(0, 2 * s, earInnerW, earInnerH, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
   ctx.save();
-  ctx.translate(9 * s, -28 * s);
-  ctx.rotate(0.15 - earWiggle);
+  ctx.translate(9 * s, -22 * s);
+  ctx.rotate(0.12 - earWiggle);
   ctx.fillStyle = BUNNY_COLOR.body;
-  roundRect(ctx, -4 * s, -22 * s, 8 * s, 24 * s, 4 * s);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, earBaseW, earBaseH, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = BUNNY_COLOR.ear_inner;
-  roundRect(ctx, -2.5 * s, -20 * s, 5 * s, 18 * s, 2.5 * s);
+  ctx.beginPath();
+  ctx.ellipse(0, 2 * s, earInnerW, earInnerH, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
   // head
   ctx.fillStyle = BUNNY_COLOR.body;
-  ctx.beginPath(); ctx.ellipse(0, -12 * s, 16 * s, 15 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, -8 * s, 17 * s, 16 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // snout
+  // muzzle
   ctx.fillStyle = BUNNY_COLOR.belly;
-  ctx.beginPath(); ctx.ellipse(0, -5 * s, 8 * s, 6 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, -2 * s, 8.5 * s, 6.5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // nose
+  // nose (cute Y shape)
   ctx.fillStyle = BUNNY_COLOR.nose;
-  ctx.beginPath(); ctx.ellipse(0, -7.5 * s, 3 * s, 2.5 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, -5.5 * s, 3 * s, 2.2 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = BUNNY_COLOR.nose;
+  ctx.lineWidth = 1.2 * s;
+  ctx.beginPath();
+  ctx.moveTo(0, -3.5 * s);
+  ctx.lineTo(-2.5 * s, -1 * s);
+  ctx.moveTo(0, -3.5 * s);
+  ctx.lineTo(2.5 * s, -1 * s);
+  ctx.stroke();
 
   // eyes
-  const eyeH = blinkT > 0.8 ? 1 : 3.5 * s;
+  const eyeH = blinkT > 0.8 ? 0.8 : 4 * s;
   ctx.fillStyle = '#3D2B3D';
-  ctx.beginPath(); ctx.ellipse(-6 * s, -15 * s, 2.8 * s, eyeH, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(6 * s, -15 * s, 2.8 * s, eyeH, 0, 0, Math.PI * 2); ctx.fill();
-
+  ctx.beginPath(); ctx.ellipse(-6 * s, -13 * s, 3 * s, eyeH, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(6 * s, -13 * s, 3 * s, eyeH, 0, 0, Math.PI * 2); ctx.fill();
   if (blinkT <= 0.8) {
     ctx.fillStyle = 'white';
-    ctx.beginPath(); ctx.ellipse(-5 * s, -16 * s, 1.1 * s, 1.1 * s, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(7 * s, -16 * s, 1.1 * s, 1.1 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-5 * s, -14.5 * s, 1.2 * s, 1.2 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(7 * s, -14.5 * s, 1.2 * s, 1.2 * s, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   // cheeks
-  ctx.fillStyle = CHEEK_COLOR;
-  ctx.beginPath(); ctx.ellipse(-10 * s, -10 * s, 4.5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(10 * s, -10 * s, 4.5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = BUNNY_COLOR.ear_inner; // pink blush
+  ctx.globalAlpha = 0.45;
+  ctx.beginPath(); ctx.ellipse(-11 * s, -7 * s, 5.5 * s, 3.5 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(11 * s, -7 * s, 5.5 * s, 3.5 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
 
   // mouth
   ctx.strokeStyle = '#D4A0A0';
-  ctx.lineWidth = 1.5 * s;
+  ctx.lineWidth = 1.3 * s;
   ctx.beginPath();
-  ctx.moveTo(-2.5 * s, -3 * s);
-  ctx.quadraticCurveTo(0, -1 * s, 2.5 * s, -3 * s);
+  ctx.moveTo(-3 * s, -0.5 * s);
+  ctx.quadraticCurveTo(0, 1.5 * s, 3 * s, -0.5 * s);
   ctx.stroke();
 
   ctx.restore();
   ctx.restore();
 }
 
-// ─── Floating particles (hearts, stars) ─────────────────────────────────────
+// ─── Floating particles ───────────────────────────────────────────────────────
 function drawParticles(ctx, particles) {
   particles.forEach(p => {
     ctx.save();
@@ -243,134 +312,218 @@ function drawParticles(ctx, particles) {
 }
 
 // ─── Action Animation Definitions ────────────────────────────────────────────
-// Each action returns { bearAnim, bunnyAnim } based on progress t (0→1)
+// Returns { self: animParams, other: animParams, bearXOffset, bunnyXOffset }
+// "self" = the character who triggered the action
+// "other" = the partner
+// xOffset values move characters toward each other (bear moves right +, bunny moves left -)
 function getActionFrame(action, t) {
-  const ease = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  const ease    = v => v < 0.5 ? 2 * v * v : -1 + (4 - 2 * v) * v;
+  const easeOut = v => 1 - Math.pow(1 - v, 3);
+  const easeIn  = v => v * v * v;
 
   switch (action) {
     case 'Hug': {
-      // Bear's right arm swings far right toward bunny, bunny tilts into bear
-      const reach = t < 0.3 ? easeOut(t / 0.3) * 1.8
-                  : t < 0.7 ? 1.8
-                  : 1.8 * (1 - easeOut((t - 0.7) / 0.3));
+      // Both slide together, arms wrap, hold during middle, release
+      const proximity = t < 0.25 ? easeOut(t / 0.25)
+                      : t < 0.75 ? 1
+                      : 1 - easeIn((t - 0.75) / 0.25);
+      const reach = proximity * 1.6;
       return {
-        bear: { armReach: reach, headTilt: reach * 0.1 },
-        bunny: { headTilt: -reach * 0.15, jumpOffset: -reach * 2 }
+        self:  { armReach: reach, headTilt: proximity * 0.12 },
+        other: { armReach: reach * 0.7, headTilt: -proximity * 0.12 },
+        bearXOffset:  proximity * 18,
+        bunnyXOffset: -proximity * 18,
       };
     }
+
     case 'Kiss': {
-      // Bear leans forward, heart particle handled separately
-      const lean = t < 0.4 ? easeOut(t / 0.4) * 0.25
-                 : t < 0.6 ? 0.25
-                 : 0.25 * (1 - easeOut((t - 0.6) / 0.4));
+      // Both lean in together and meet in the middle
+      const lean = t < 0.35 ? easeOut(t / 0.35)
+                 : t < 0.65 ? 1
+                 : 1 - easeOut((t - 0.65) / 0.35);
+      const proximity = lean * 0.7;
       return {
-        bear: { headTilt: lean },
-        bunny: { headTilt: -lean * 0.5, jumpOffset: -lean * 8 }
+        self:  { headTilt:  lean * 0.22 },
+        other: { headTilt: -lean * 0.22, jumpOffset: lean * -4 },
+        bearXOffset:  proximity * 22,
+        bunnyXOffset: -proximity * 22,
       };
     }
+
     case 'Wave': {
-      const wave = Math.sin(t * Math.PI * 4) * 0.6;
+      // Only self waves — other does a small happy bounce
+      const wave = Math.sin(t * Math.PI * 5) * 0.7;
       return {
-        bear: { armReach: wave > 0 ? wave : 0, armAngle: wave * 0.3 },
-        bunny: { jumpOffset: Math.sin(t * Math.PI * 2) * -3 }
+        self:  { armReach: Math.max(0, wave), armAngle: wave * 0.25 },
+        other: { jumpOffset: Math.sin(t * Math.PI * 2.5) * -3 },
+        bearXOffset: 0, bunnyXOffset: 0,
       };
     }
+
     case 'Pat head': {
-      const pat = t < 0.5 ? easeOut(t / 0.5) * 1.2 : 1.2 * (1 - easeOut((t - 0.5) / 0.5));
-      const bob = Math.sin(t * Math.PI * 6) * 0.3;
+      // Self's arm pats; other bobs head
+      const reach = t < 0.3 ? easeOut(t / 0.3) * 1.3
+                  : t < 0.7 ? 1.3
+                  : 1.3 * (1 - easeOut((t - 0.7) / 0.3));
+      const bob = Math.sin(t * Math.PI * 7) * 0.25;
       return {
-        bear: { armReach: pat },
-        bunny: { jumpOffset: bob * -4, headTilt: bob * 0.1 }
+        self:  { armReach: reach },
+        other: { headTilt: bob * 0.15, jumpOffset: bob * -3 },
+        bearXOffset: reach * 10,
+        bunnyXOffset: 0,
       };
     }
+
     case 'Boop nose': {
-      const boop = t < 0.4 ? easeOut(t / 0.4) * 1.5
-                 : t < 0.6 ? 1.5
-                 : 1.5 * (1 - easeOut((t - 0.6) / 0.4));
+      // Self pokes forward; other reacts with head tilt
+      const boop = t < 0.35 ? easeOut(t / 0.35) * 1.5
+                 : t < 0.55 ? 1.5
+                 : 1.5 * (1 - easeOut((t - 0.55) / 0.45));
       return {
-        bear: { armReach: boop },
-        bunny: { headTilt: boop * 0.08, jumpOffset: boop * -1 }
+        self:  { armReach: boop },
+        other: { headTilt: boop * 0.1, jumpOffset: -boop * 1.5 },
+        bearXOffset: boop * 8,
+        bunnyXOffset: 0,
       };
     }
+
     case 'High five': {
+      // Both raise arms and come together
       const raise = t < 0.4 ? easeOut(t / 0.4) * 1.4
                   : t < 0.6 ? 1.4
                   : 1.4 * (1 - easeOut((t - 0.6) / 0.4));
+      const proximity = raise * 0.5;
       return {
-        bear: { armReach: raise, armAngle: -raise * 0.5 },
-        bunny: { armReach: raise, armAngle: -raise * 0.5 }
+        self:  { armReach: raise, armAngle: -raise * 0.4 },
+        other: { armReach: raise, armAngle: -raise * 0.4 },
+        bearXOffset:  proximity * 12,
+        bunnyXOffset: -proximity * 12,
       };
     }
+
     case 'Poke': {
+      // Self (bunny) pokes the bear; bear jumps slightly
       const poke = t < 0.3 ? easeOut(t / 0.3) * 1.3
                  : t < 0.5 ? 1.3
                  : 1.3 * (1 - easeOut((t - 0.5) / 0.5));
       return {
-        bear: { jumpOffset: ease(t) * -5 },
-        bunny: { armReach: poke, headTilt: poke * 0.05 }
+        self:  { armReach: poke },
+        other: { jumpOffset: ease(t) * -6, headTilt: ease(t) * 0.08 },
+        bearXOffset: 0,
+        bunnyXOffset: -poke * 10,
       };
     }
+
     case 'Throw heart': {
-      const jump = Math.sin(t * Math.PI) * -12;
+      // Self (bunny) jumps and throws; bear catches with happy bounce
+      const jump = Math.sin(t * Math.PI) * -14;
+      const bearBounce = Math.sin(t * Math.PI * 2) * -4;
       return {
-        bear: { jumpOffset: ease(t) * -4 },
-        bunny: { jumpOffset: jump, armAngle: -t * 0.5 }
+        self:  { jumpOffset: jump, armAngle: -t * 0.6 },
+        other: { jumpOffset: bearBounce },
+        bearXOffset: 0, bunnyXOffset: 0,
       };
     }
+
     case 'Nuzzle': {
-      const nuzzle = Math.sin(t * Math.PI * 3) * 0.15;
+      // Both move close, heads touch and wiggle
+      const proximity = t < 0.2 ? easeOut(t / 0.2)
+                      : t < 0.8 ? 1
+                      : 1 - easeOut((t - 0.8) / 0.2);
+      const nuzzle = Math.sin(t * Math.PI * 4) * 0.14 * proximity;
       return {
-        bear: { headTilt: -nuzzle * 0.5 },
-        bunny: { headTilt: nuzzle, jumpOffset: Math.sin(t * Math.PI) * -5 }
+        self:  { headTilt: nuzzle },
+        other: { headTilt: -nuzzle * 0.8 },
+        bearXOffset:  proximity * 20,
+        bunnyXOffset: -proximity * 20,
       };
     }
-    default: return { bear: {}, bunny: {} };
+
+    default: return { self: {}, other: {}, bearXOffset: 0, bunnyXOffset: 0 };
   }
 }
 
-// Particles to spawn per action
+// ─── Map action frame to bear/bunny based on who sent it ─────────────────────
+function resolveActionFrame(action, t, senderIsBear) {
+  const raw = getActionFrame(action, t);
+  if (senderIsBear) {
+    return {
+      bear:  raw.self  || {},
+      bunny: raw.other || {},
+      bearXOffset:  raw.bearXOffset  || 0,
+      bunnyXOffset: raw.bunnyXOffset || 0,
+    };
+  } else {
+    // sender is bunny — swap, and mirror x offsets
+    return {
+      bear:  raw.other || {},
+      bunny: raw.self  || {},
+      bearXOffset:  -(raw.bunnyXOffset || 0),
+      bunnyXOffset: -(raw.bearXOffset  || 0),
+    };
+  }
+}
+
+// ─── Particles per action ─────────────────────────────────────────────────────
 function getActionParticles(action, bearX, bunnyX, midY) {
   const midX = (bearX + bunnyX) / 2;
   switch (action) {
-    case 'Kiss': case 'Nuzzle':
-      return [{ emoji: '💋', x: midX, y: midY - 10, vy: -1.2, alpha: 1, size: 18 }];
+    case 'Kiss':
+      return [
+        { emoji: '💋', x: midX,      y: midY - 15, vy: -1.4, alpha: 1, size: 20 },
+        { emoji: '✨', x: midX - 15, y: midY - 5,  vy: -0.9, alpha: 1, size: 13 },
+      ];
+    case 'Nuzzle':
+      return [
+        { emoji: '🤍', x: midX, y: midY - 20, vy: -1.1, alpha: 1, size: 18 },
+        { emoji: '✨', x: midX + 12, y: midY - 5, vy: -0.8, alpha: 1, size: 12 },
+      ];
     case 'Throw heart':
       return [
-        { emoji: '💝', x: bunnyX + 10, y: midY - 20, vy: -1.5, alpha: 1, size: 20 },
-        { emoji: '✨', x: bunnyX - 5,  y: midY - 10, vy: -1.0, alpha: 1, size: 14 },
+        { emoji: '💝', x: bunnyX - 10, y: midY - 25, vy: -1.6, alpha: 1, size: 22 },
+        { emoji: '✨', x: bunnyX + 5,  y: midY - 8,  vy: -1.0, alpha: 1, size: 14 },
+        { emoji: '💫', x: midX,        y: midY - 10, vy: -0.8, alpha: 1, size: 12 },
       ];
     case 'High five':
-      return [{ emoji: '✨', x: midX, y: midY - 20, vy: -1.0, alpha: 1, size: 16 }];
+      return [
+        { emoji: '✨', x: midX,      y: midY - 25, vy: -1.2, alpha: 1, size: 18 },
+        { emoji: '⭐', x: midX - 10, y: midY - 10, vy: -0.9, alpha: 1, size: 14 },
+      ];
     case 'Hug':
-      return [{ emoji: '🤍', x: midX, y: midY - 15, vy: -1.0, alpha: 1, size: 16 }];
+      return [
+        { emoji: '🤍', x: midX, y: midY - 20, vy: -1.0, alpha: 1, size: 16 },
+        { emoji: '💜', x: midX + 8, y: midY - 8, vy: -0.8, alpha: 1, size: 13 },
+      ];
     case 'Boop nose':
-      return [{ emoji: '⭐', x: bunnyX - 5, y: midY - 10, vy: -0.8, alpha: 1, size: 14 }];
+      return [{ emoji: '⭐', x: bunnyX - 10, y: midY - 10, vy: -0.9, alpha: 1, size: 15 }];
+    case 'Wave':
+      return [{ emoji: '👋', x: midX + 15, y: midY - 30, vy: -0.7, alpha: 1, size: 16 }];
+    case 'Pat head':
+      return [{ emoji: '🫶', x: midX, y: midY - 20, vy: -0.8, alpha: 1, size: 16 }];
+    case 'Poke':
+      return [{ emoji: '💥', x: bearX + 5, y: midY - 10, vy: -0.7, alpha: 1, size: 15 }];
     default: return [];
   }
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ChibiWidget({ name }) {
-  const canvasRef       = useRef(null);
-  const animRef         = useRef(null);
-  const stateRef        = useRef({
-    // Idle animation clocks
+  const canvasRef = useRef(null);
+  const animRef   = useRef(null);
+  const stateRef  = useRef({
     time: 0,
     bearBlink: 0, bearBlinkTimer: Math.random() * 200,
     bunnyBlink: 0, bunnyBlinkTimer: Math.random() * 200 + 50,
-    // Action state
-    action: null,        // current action name
-    actionT: 0,          // progress 0→1
-    actionDone: false,
+    action: null,
+    actionT: 0,
+    actionSender: null, // 'Mohamed' (bear) or 'Lena' (bunny)
     particles: [],
-    // Queue
     queue: [],
     isPlaying: false,
   });
 
-  const [db, setDb]           = useState(null);
-  const [fs, setFs]           = useState(null);
+  const [db, setDb]     = useState(null);
+  const [fs, setFs]     = useState(null);
   const [isMounted, setMounted] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -391,7 +544,7 @@ export default function ChibiWidget({ name }) {
     })();
   }, []);
 
-  // ── Save action to Firebase queue for partner ──
+  // ── Save action to Firebase ──
   const sendAction = useCallback(async (action) => {
     if (!db || !fs) return;
     try {
@@ -405,7 +558,6 @@ export default function ChibiWidget({ name }) {
     } catch (e) { console.error('Failed to queue action:', e); }
   }, [db, fs, myName, partnerName]);
 
-  // ── Mark actions as seen ──
   const markSeen = useCallback(async (docIds) => {
     if (!db || !fs || !docIds.length) return;
     try {
@@ -415,7 +567,6 @@ export default function ChibiWidget({ name }) {
     } catch (e) { console.error('Failed to mark seen:', e); }
   }, [db, fs]);
 
-  // ── Clean up expired (>24h) entries on open ──
   const cleanExpired = useCallback(async () => {
     if (!db || !fs) return;
     try {
@@ -435,20 +586,16 @@ export default function ChibiWidget({ name }) {
     } catch (e) { console.error('cleanExpired error:', e); }
   }, [db, fs, myName]);
 
-  // ── Listen for real-time incoming actions ──
+  // ── Listen for incoming actions ──
   useEffect(() => {
     if (!db || !fs) return;
-
-    // First clean expired, then load queue
     cleanExpired();
-
     const q = fs.query(
       fs.collection(db, 'chibiQueue'),
       fs.where('to', '==', myName),
       fs.where('seen', '==', false),
       fs.orderBy('timestamp', 'asc')
     );
-
     const unsub = fs.onSnapshot(q, (snap) => {
       const now = Date.now();
       const items = snap.docs
@@ -457,38 +604,15 @@ export default function ChibiWidget({ name }) {
           const ts = item.timestamp?.toDate?.();
           return ts && (now - ts.getTime()) < EXPIRY_MS;
         });
-
       if (items.length > 0) {
         const s = stateRef.current;
-        // Add new items to queue (avoid duplicates)
         const existingIds = new Set(s.queue.map(q => q.id));
         const newItems = items.filter(i => !existingIds.has(i.id));
         s.queue.push(...newItems);
       }
     });
-
     return () => unsub();
   }, [db, fs, myName, cleanExpired]);
-
-  // ── Trigger an action (locally + send to Firebase) ──
-  const triggerAction = useCallback((action) => {
-    const s = stateRef.current;
-    if (s.isPlaying) return;
-    s.action = action;
-    s.actionT = 0;
-    s.isPlaying = true;
-    setIsAnimating(true);
-    sendAction(action);
-
-    // Spawn particles
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const bearX  = canvas.width * 0.28;
-      const bunnyX = canvas.width * 0.72;
-      const midY   = canvas.height * 0.55;
-      s.particles.push(...getActionParticles(action, bearX, bunnyX, midY));
-    }
-  }, [sendAction]);
 
   // ── Process queue ──
   const processQueue = useCallback(() => {
@@ -497,10 +621,10 @@ export default function ChibiWidget({ name }) {
     const next = s.queue.shift();
     s.action = next.action;
     s.actionT = 0;
+    s.actionSender = next.from; // who sent it (determines which character animates)
     s.isPlaying = true;
     setIsAnimating(true);
     markSeen([next.id]);
-
     const canvas = canvasRef.current;
     if (canvas) {
       const bearX  = canvas.width * 0.28;
@@ -510,91 +634,115 @@ export default function ChibiWidget({ name }) {
     }
   }, [markSeen]);
 
+  // ── Trigger local action ──
+  const triggerAction = useCallback((action) => {
+    const s = stateRef.current;
+    if (s.isPlaying) return;
+    s.action = action;
+    s.actionT = 0;
+    s.actionSender = myName; // I am the sender
+    s.isPlaying = true;
+    setIsAnimating(true);
+    sendAction(action);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const bearX  = canvas.width * 0.28;
+      const bunnyX = canvas.width * 0.72;
+      const midY   = canvas.height * 0.55;
+      s.particles.push(...getActionParticles(action, bearX, bunnyX, midY));
+    }
+  }, [sendAction, myName]);
+
   // ── Main render loop ──
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const ACTION_DURATION = 90; // frames
+    const ACTION_DURATION = 100; // frames
     const SCALE = canvas.width / 280;
 
-    const bearX  = canvas.width * 0.28;
-    const bearY  = canvas.height * 0.68;
-    const bunnyX = canvas.width * 0.72;
-    const bunnyY = canvas.height * 0.68;
+    const BASE_BEAR_X  = canvas.width * 0.28;
+    const BASE_BEAR_Y  = canvas.height * 0.68;
+    const BASE_BUNNY_X = canvas.width * 0.72;
+    const BASE_BUNNY_Y = canvas.height * 0.68;
 
     const loop = () => {
       const s = stateRef.current;
       s.time++;
 
-      // ── Idle animation values ──
-      const breathBear  = Math.sin(s.time * 0.04) * 1.5;
-      const breathBunny = Math.sin(s.time * 0.04 + 1) * 1.5;
-      const earWiggle   = Math.sin(s.time * 0.07) * 0.08;
+      const breathBear  = Math.sin(s.time * 0.038) * 1.5;
+      const breathBunny = Math.sin(s.time * 0.038 + 1.1) * 1.5;
+      const earWiggle   = Math.sin(s.time * 0.065) * 0.07;
 
-      // Blink logic
+      // Blink
       s.bearBlinkTimer--;
       if (s.bearBlinkTimer <= 0) { s.bearBlink = 1; s.bearBlinkTimer = 180 + Math.random() * 120; }
-      if (s.bearBlink > 0) s.bearBlink = Math.max(0, s.bearBlink - 0.15);
+      if (s.bearBlink > 0) s.bearBlink = Math.max(0, s.bearBlink - 0.14);
 
       s.bunnyBlinkTimer--;
       if (s.bunnyBlinkTimer <= 0) { s.bunnyBlink = 1; s.bunnyBlinkTimer = 200 + Math.random() * 100; }
-      if (s.bunnyBlink > 0) s.bunnyBlink = Math.max(0, s.bunnyBlink - 0.15);
+      if (s.bunnyBlink > 0) s.bunnyBlink = Math.max(0, s.bunnyBlink - 0.14);
 
-      // ── Action progress ──
-      let actionFrame = { bear: {}, bunny: {} };
+      // Action progress
+      let bearAnim = {}, bunnyAnim = {};
+      let bearX = BASE_BEAR_X, bunnyX = BASE_BUNNY_X;
+
       if (s.isPlaying && s.action) {
         s.actionT = Math.min(1, s.actionT + 1 / ACTION_DURATION);
-        actionFrame = getActionFrame(s.action, s.actionT);
+        const senderIsBear = s.actionSender === 'Mohamed';
+        const frame = resolveActionFrame(s.action, s.actionT, senderIsBear);
+        bearAnim  = frame.bear  || {};
+        bunnyAnim = frame.bunny || {};
+        bearX  = BASE_BEAR_X  + (frame.bearXOffset  || 0) * SCALE;
+        bunnyX = BASE_BUNNY_X + (frame.bunnyXOffset || 0) * SCALE;
 
         if (s.actionT >= 1) {
           s.isPlaying = false;
           s.action = null;
           s.actionT = 0;
+          s.actionSender = null;
           setIsAnimating(false);
-          // Try to play next queued action
           setTimeout(() => processQueue(), 400);
         }
       } else if (!s.isPlaying) {
         processQueue();
       }
 
-      // ── Update particles ──
+      // Particles
       s.particles = s.particles
-        .map(p => ({ ...p, y: p.y + p.vy, alpha: p.alpha - 0.012 }))
+        .map(p => ({ ...p, y: p.y + p.vy, alpha: p.alpha - 0.011 }))
         .filter(p => p.alpha > 0);
 
       // ── Draw ──
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Background subtle glow between characters
+      // Subtle glow
       const grd = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width * 0.4);
-      grd.addColorStop(0, 'rgba(180, 140, 255, 0.08)');
+      grd.addColorStop(0, 'rgba(180, 140, 255, 0.07)');
       grd.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Bear
-      drawBear(ctx, bearX, bearY, SCALE, {
+      // Bear (left, faces right naturally)
+      drawBear(ctx, bearX, BASE_BEAR_Y, SCALE, {
         breathOffset: breathBear,
         blinkT: s.bearBlink,
-        ...(actionFrame.bear || {}),
+        ...bearAnim,
       });
 
-      // Bunny (mirror horizontally so they face each other)
+      // Bunny (right, mirrored so it faces left = toward bear)
       ctx.save();
       ctx.translate(bunnyX, 0);
       ctx.scale(-1, 1);
-      drawBunny(ctx, 0, bunnyY, SCALE, {
+      drawBunny(ctx, 0, BASE_BUNNY_Y, SCALE, {
         breathOffset: breathBunny,
         blinkT: s.bunnyBlink,
         earWiggle,
-        ...(actionFrame.bunny || {}),
+        ...bunnyAnim,
       });
       ctx.restore();
 
-      // Particles
       drawParticles(ctx, s.particles);
 
       animRef.current = requestAnimationFrame(loop);
@@ -604,7 +752,7 @@ export default function ChibiWidget({ name }) {
     return () => cancelAnimationFrame(animRef.current);
   }, [processQueue]);
 
-  // ── Resize canvas to container ──
+  // ── Resize canvas ──
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -627,8 +775,8 @@ export default function ChibiWidget({ name }) {
 
       {/* Character labels */}
       <div className="flex justify-between px-6 pb-1 text-xs text-purple-300/70">
-        <span>🐻 Mohamed</span>
-        <span>Lena 🐰</span>
+        <span>🐻 Bear</span>
+        <span>Bunny 🐰</span>
       </div>
 
       {/* Action buttons */}

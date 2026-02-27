@@ -76,7 +76,7 @@ const ChibiWidget = dynamic(() => import('../components/ChibiWidget'), {
 
 const FEATURES = {
   chibi: {
-    title: 'Our Characters',
+    title: 'Bear x Bunny',
     color: 'pink',
     colSpan: 2,
     icon: (
@@ -87,7 +87,7 @@ const FEATURES = {
         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
       </svg>
     ),
-    description: "Send actions to each other 🐻🐰"
+    description: "Send love to each other 🐻🐰"
   },
   mood: {
     title: 'Mood Tracker',
