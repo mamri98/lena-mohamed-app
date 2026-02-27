@@ -301,11 +301,14 @@ function drawBunny(ctx, x, y, scale, anim) {
 }
 
 // ─── Floating particles ───────────────────────────────────────────────────────
+// FIX: divide font size by devicePixelRatio — the ctx transform is already scaled by DPR
+// from the resize effect, so drawing at p.size would render at p.size * DPR (huge on mobile)
 function drawParticles(ctx, particles) {
+  const dpr = window.devicePixelRatio || 1;
   particles.forEach(p => {
     ctx.save();
     ctx.globalAlpha = p.alpha;
-    ctx.font = `${p.size}px serif`;
+    ctx.font = `${p.size / dpr}px serif`;
     ctx.fillText(p.emoji, p.x, p.y);
     ctx.restore();
   });
