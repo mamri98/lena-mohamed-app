@@ -1,6 +1,10 @@
 // components/DrawingCanvas.js
-// Refactored: extracted sub-components, unified canvas element, removed redundant
-// intermediate variables. Same functionality, ~40% fewer lines.
+// CHANGED:
+//   - Fixed broken guard in drawStroke: `!stroke.points?.length < 2` → `!stroke.points || stroke.points.length < 2`
+//   - Fixed disappearing stroke on mouseup: endDrawing now optimistically pushes the stroke into
+//     strokesCache BEFORE saving to Firestore, so redrawAllStrokes() always has the latest data
+//     even before the onSnapshot fires. The pending entry is replaced cleanly when Firestore responds.
+//   - Moved currentStroke.current = [] reset to BEFORE the async Firestore call to avoid stale ref issues
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
@@ -61,7 +65,7 @@ export default function DrawingCanvas({ name }) {
   const [myStrokes, setMyStrokes]         = useState([]);
   const [isLandscape, setIsLandscape]     = useState(false);
 
-  // Orientation detection — delayed on orientationchange since iOS fires before dimensions update
+  // Orientation detection
   useEffect(() => {
     const check = () => setIsLandscape(window.innerWidth > window.innerHeight);
     const delayed = () => setTimeout(check, 100);
@@ -100,11 +104,12 @@ export default function DrawingCanvas({ name }) {
     return fs.onSnapshot(fs.doc(db, DB.prompt, 'current'), (snap) => setPrompt(snap.exists() ? snap.data().text || '' : ''));
   }, [db, fs]);
 
-  // Canvas drawing logic
+  // ─── Canvas drawing logic ─────────────────────────────────────────────────
   const getCtx = () => canvasRef.current?.getContext('2d');
 
+  // FIX: corrected broken guard (`!stroke.points?.length < 2` always evaluated wrong)
   const drawStroke = useCallback((ctx, stroke) => {
-    if (!stroke.points?.length < 2) return;
+    if (!stroke.points || stroke.points.length < 2) return;
     ctx.beginPath();
     ctx.strokeStyle = stroke.color; ctx.lineWidth = stroke.width;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -222,14 +227,31 @@ export default function DrawingCanvas({ name }) {
     e.preventDefault(); isDrawing.current = false;
     const points = currentStroke.current;
     if (points.length < 2 || !db || !fs) return;
+
+    const strokeData = {
+      points,
+      author: name,
+      color: isEraser ? '#fafafa' : selectedColor,
+      width: isEraser ? selectedWidth * 2.5 : selectedWidth,
+    };
+
+    // FIX: Optimistically add to cache so the canvas doesn't blank while
+    // waiting for Firestore to confirm and onSnapshot to fire.
+    // The __pending__ entry gets replaced cleanly when the real snapshot arrives.
+    strokesCache.current = [...strokesCache.current, { id: '__pending__', ...strokeData }];
+    currentStroke.current = []; // reset before async to avoid stale ref
+
     try {
       await fs.addDoc(fs.collection(db, DB.strokes), {
-        points, author: name, timestamp: fs.serverTimestamp(),
-        color: isEraser ? '#fafafa' : selectedColor,
-        width: isEraser ? selectedWidth * 2.5 : selectedWidth,
+        ...strokeData,
+        timestamp: fs.serverTimestamp(),
       });
-    } catch (e) { console.error('Stroke save error:', e); }
-    currentStroke.current = [];
+    } catch (e) {
+      console.error('Stroke save error:', e);
+      // Roll back the optimistic entry on failure
+      strokesCache.current = strokesCache.current.filter(s => s.id !== '__pending__');
+      redrawAllStrokes(strokesCache.current);
+    }
   };
 
   const selectColor = (c) => { setSelectedColor(c); setIsEraser(false); };
