@@ -1,7 +1,7 @@
 // components/FeatureContainer.js
-// CHANGED: Removed hardcoded calc(100dvh - ...) height. Now uses h-full to fill
-// whatever the parent <main> provides. This works because index.js now properly
-// locks the page to 100dvh and passes height down via flex layout.
+// CHANGED: In landscape drawing mode, the container becomes fully transparent
+// with zero padding and no border/rounded corners — just a floating close button
+// overlaid on top. This lets DrawingCanvas stretch edge-to-edge horizontally.
 
 import { useState, useEffect } from 'react';
 import { ANIMATIONS, createAnimationController } from '../utils/app-animations';
@@ -18,27 +18,34 @@ const TEXT_COLOR_CLASSES = {
 
 export default function FeatureContainer({ title, color, isActive, onClose, children }) {
   const [animationState, setAnimationState] = useState(null);
-  const [isDocumentView, setIsDocumentView] = useState(false);
-  const [isDrawingView, setIsDrawingView] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  const isDocumentView = title === 'Our Journal' || title === 'Our Dua Journal';
+  const isDrawingView  = title === 'Draw Together';
+  const isFullHeight   = isDocumentView || isDrawingView;
 
   useEffect(() => {
-    setIsDocumentView(title === 'Our Journal' || title === 'Our Dua Journal');
-    setIsDrawingView(title === 'Draw Together');
-  }, [title]);
+    const check = () => setIsLandscape(window.innerWidth > window.innerHeight);
+    const delayedCheck = () => setTimeout(check, 100);
+    check();
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', delayedCheck);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', delayedCheck);
+    };
+  }, []);
 
   useEffect(() => {
     if ((isActive && animationState === 'expanding') ||
         (!isActive && !animationState)) return;
-
     const controller = createAnimationController();
-
     if (isActive) {
       setAnimationState('expanding');
     } else if (animationState === 'expanding') {
       setAnimationState('shrinking');
       controller.after(() => setAnimationState(null), 400);
     }
-
     return controller.cleanup;
   }, [isActive, animationState]);
 
@@ -51,7 +58,27 @@ export default function FeatureContainer({ title, color, isActive, onClose, chil
       : '';
 
   const textColorClass = TEXT_COLOR_CLASSES[color] || 'text-purple-200';
-  const isFullHeight = isDocumentView || isDrawingView;
+
+  // Landscape drawing: no card chrome at all — canvas goes full bleed,
+  // close button floats as an overlay in the top-right corner of the canvas
+  if (isDrawingView && isLandscape) {
+    return (
+      <div className={`relative flex flex-col h-full w-full overflow-hidden ${animationClass}`}>
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-16 z-20 bg-black/30 hover:bg-black/50 text-white rounded-full p-1 transition-colors"
+          aria-label="Close"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <div className="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -59,7 +86,6 @@ export default function FeatureContainer({ title, color, isActive, onClose, chil
         isFullHeight ? 'flex flex-col h-full overflow-hidden' : ''
       }`}
     >
-      {/* Header — never shrinks */}
       <div className={`flex justify-between items-center flex-shrink-0 ${isFullHeight ? 'mb-1' : 'mb-4'}`}>
         <h2 className={`text-xl font-semibold ${textColorClass}`}>{title}</h2>
         <button
@@ -72,8 +98,6 @@ export default function FeatureContainer({ title, color, isActive, onClose, chil
           </svg>
         </button>
       </div>
-
-      {/* Content — flex-1 + min-h-0 lets DrawingCanvas fill this space */}
       <div className={`${isFullHeight ? 'flex-1 min-h-0 flex flex-col overflow-hidden' : 'overflow-visible'}`}>
         {children}
       </div>

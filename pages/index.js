@@ -2,11 +2,12 @@
 // CHANGED:
 //   - Added isLandscape state + orientation detection
 //   - When drawing is active, outer wrapper becomes h-[100dvh] flex flex-col
-//     (fixes portrait canvas collapsing to a thin line — height chain now resolves)
 //   - Inner content div becomes flex-1 min-h-0 flex flex-col in drawing mode
 //   - <main> becomes flex-1 min-h-0 flex flex-col in drawing mode
-//   - max-w-md is only applied in portrait drawing mode (fixes landscape not filling width)
-//   - Added ChibiWidget as full-width top widget on dashboard
+//   - max-w-md is only applied in portrait drawing mode
+//   - CHANGED: Added 'chibi' to FEATURES as a col-span-2 card at the top of the grid
+//   - CHANGED: ChibiWidget only renders inside FeatureContainer when activeFeature === 'chibi'
+//   - CHANGED: Removed all needsFullHeight/isChibiOpen special casing
 
 import Head from 'next/head';
 import { useEffect, useState, useCallback } from 'react';
@@ -68,17 +69,26 @@ const Questions = dynamic(() => import('../components/Questions'), {
   loading: () => <div className="p-4 text-center">Loading questions...</div>
 });
 
-// NEW: Chibi widget
 const ChibiWidget = dynamic(() => import('../components/ChibiWidget'), {
   ssr: false,
-  loading: () => (
-    <div className="col-span-2 h-48 rounded-2xl border border-purple-500/30 bg-white/5 flex items-center justify-center">
-      <p className="text-purple-400 text-sm">Loading chibi...</p>
-    </div>
-  ),
+  loading: () => <div className="p-4 text-center">Loading chibi...</div>
 });
 
 const FEATURES = {
+  chibi: {
+    title: 'Our Characters',
+    color: 'pink',
+    colSpan: 2,
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-pink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
+    ),
+    description: "Send actions to each other 🐻🐰"
+  },
   mood: {
     title: 'Mood Tracker',
     color: 'purple',
@@ -219,6 +229,7 @@ export default function Home() {
 
   function renderFeatureContent() {
     switch (activeFeature) {
+      case 'chibi':     return <ChibiWidget name={name} />;
       case 'mood':      return <MoodTracker name={name} />;
       case 'selfie':    return <DailySelfie name={name} />;
       case 'quran':     return <DailyQuranVerse />;
@@ -280,18 +291,16 @@ export default function Home() {
 
           {!activeFeature && (
             <div className="grid grid-cols-2 gap-4 mb-4">
-              {/* NEW: Chibi widget spans full width at the top */}
-              <ChibiWidget name={name} />
-
               {Object.entries(FEATURES).map(([key, feature]) => (
-                <DashboardItem
-                  key={key}
-                  icon={feature.icon}
-                  title={feature.title}
-                  description={feature.description}
-                  color={feature.color}
-                  onClick={() => selectFeature(key)}
-                />
+                <div key={key} className={feature.colSpan === 2 ? 'col-span-2' : ''}>
+                  <DashboardItem
+                    icon={feature.icon}
+                    title={feature.title}
+                    description={feature.description}
+                    color={feature.color}
+                    onClick={() => selectFeature(key)}
+                  />
+                </div>
               ))}
             </div>
           )}
