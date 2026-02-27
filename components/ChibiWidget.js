@@ -1,12 +1,12 @@
 // components/ChibiWidget.js
 // CHANGED:
-//   - Title updated to "Bunny and Bear" (in index.js FEATURES), subtitle to "Send love to each other"
-//   - Completely redrawn bear and bunny to match reference image (rounder, cuter, more accurate chibi)
-//   - Fixed animation sender bug: actions now use { self, other } keys mapped by sender, so
-//     the correct character always performs the action
-//   - Added xOffset to character positions for proximity animations (Kiss, Hug, Poke, Nuzzle)
-//     so characters physically move toward each other
-//   - Improved animation definitions with better expressiveness
+//   - Fixed particle icons being too opaque/bold on mobile (high-DPR screens)
+//     1. Resize useEffect now accounts for devicePixelRatio — canvas buffer scaled correctly
+//        so emoji aren't upscaled/fattened on retina displays
+//     2. Render loop uses CSS logical px (canvas.width / dpr) for SCALE and base positions
+//        so characters stay properly sized on all screens
+//     3. processQueue and triggerAction use logical px when spawning particles
+//     4. getActionParticles starting alpha lowered from 1 → 0.82 to reduce heaviness on retina
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 
@@ -341,63 +341,48 @@ function getActionFrame(action, t) {
       const lean = t < 0.35 ? easeOut(t / 0.35)
                  : t < 0.65 ? 1
                  : 1 - easeOut((t - 0.65) / 0.35);
-      const proximity = lean * 0.7;
       return {
-        self:  { headTilt:  lean * 0.22 },
-        other: { headTilt: -lean * 0.22, jumpOffset: lean * -4 },
-        bearXOffset:  proximity * 22,
-        bunnyXOffset: -proximity * 22,
+        self:  { headTilt: lean * 0.18, armReach: lean * 0.5 },
+        other: { headTilt: -lean * 0.18 },
+        bearXOffset:  lean * 14,
+        bunnyXOffset: -lean * 14,
       };
     }
 
     case 'Wave': {
-      // Only self waves — other does a small happy bounce
-      const wave = Math.sin(t * Math.PI * 5) * 0.7;
+      // Self waves arm
+      const wave = Math.sin(t * Math.PI * 3) * easeOut(Math.min(t * 2, 1));
       return {
-        self:  { armReach: Math.max(0, wave), armAngle: wave * 0.25 },
-        other: { jumpOffset: Math.sin(t * Math.PI * 2.5) * -3 },
+        self:  { armAngle: wave * 0.6 },
+        other: {},
         bearXOffset: 0, bunnyXOffset: 0,
       };
     }
 
     case 'Pat head': {
-      // Self's arm pats; other bobs head
-      const reach = t < 0.3 ? easeOut(t / 0.3) * 1.3
-                  : t < 0.7 ? 1.3
-                  : 1.3 * (1 - easeOut((t - 0.7) / 0.3));
-      const bob = Math.sin(t * Math.PI * 7) * 0.25;
+      // Self reaches over and pats other's head
+      const reach = t < 0.4 ? easeOut(t / 0.4) * 1.4
+                  : t < 0.6 ? 1.4
+                  : 1.4 * (1 - easeOut((t - 0.6) / 0.4));
+      const proximity = reach * 0.5;
       return {
-        self:  { armReach: reach },
-        other: { headTilt: bob * 0.15, jumpOffset: bob * -3 },
-        bearXOffset: reach * 10,
-        bunnyXOffset: 0,
+        self:  { armReach: reach, armAngle: -reach * 0.4 },
+        other: { armReach: reach, armAngle: -reach * 0.4 },
+        bearXOffset:  proximity * 12,
+        bunnyXOffset: -proximity * 12,
       };
     }
 
     case 'Boop nose': {
-      // Self pokes forward; other reacts with head tilt
-      const boop = t < 0.35 ? easeOut(t / 0.35) * 1.5
-                 : t < 0.55 ? 1.5
-                 : 1.5 * (1 - easeOut((t - 0.55) / 0.45));
+      // Self pokes other's nose
+      const poke = t < 0.3 ? easeOut(t / 0.3) * 1.3
+                 : t < 0.5 ? 1.3
+                 : 1.3 * (1 - easeOut((t - 0.5) / 0.5));
       return {
-        self:  { armReach: boop },
-        other: { headTilt: boop * 0.1, jumpOffset: -boop * 1.5 },
-        bearXOffset: boop * 8,
+        self:  { armReach: poke },
+        other: { jumpOffset: ease(t) * -6, headTilt: ease(t) * 0.08 },
+        bearXOffset: poke * 10,
         bunnyXOffset: 0,
-      };
-    }
-
-    case 'High five': {
-      // Both raise arms and come together
-      const raise = t < 0.4 ? easeOut(t / 0.4) * 1.4
-                  : t < 0.6 ? 1.4
-                  : 1.4 * (1 - easeOut((t - 0.6) / 0.4));
-      const proximity = raise * 0.5;
-      return {
-        self:  { armReach: raise, armAngle: -raise * 0.4 },
-        other: { armReach: raise, armAngle: -raise * 0.4 },
-        bearXOffset:  proximity * 12,
-        bunnyXOffset: -proximity * 12,
       };
     }
 
@@ -422,6 +407,20 @@ function getActionFrame(action, t) {
         self:  { jumpOffset: jump, armAngle: -t * 0.6 },
         other: { jumpOffset: bearBounce },
         bearXOffset: 0, bunnyXOffset: 0,
+      };
+    }
+
+    case 'High five': {
+      // Both raise arms and slap in the middle
+      const raise = t < 0.4 ? easeOut(t / 0.4) * 1.4
+                  : t < 0.6 ? 1.4
+                  : 1.4 * (1 - easeOut((t - 0.6) / 0.4));
+      const proximity = raise * 0.5;
+      return {
+        self:  { armReach: raise, armAngle: -raise * 0.4 },
+        other: { armReach: raise, armAngle: -raise * 0.4 },
+        bearXOffset:  proximity * 12,
+        bunnyXOffset: -proximity * 12,
       };
     }
 
@@ -465,43 +464,44 @@ function resolveActionFrame(action, t, senderIsBear) {
 }
 
 // ─── Particles per action ─────────────────────────────────────────────────────
+// FIX: alpha lowered from 1 → 0.82 so emoji don't appear heavy/opaque on high-DPR mobile screens
 function getActionParticles(action, bearX, bunnyX, midY) {
   const midX = (bearX + bunnyX) / 2;
   switch (action) {
     case 'Kiss':
       return [
-        { emoji: '💋', x: midX,      y: midY - 15, vy: -1.4, alpha: 1, size: 20 },
-        { emoji: '✨', x: midX - 15, y: midY - 5,  vy: -0.9, alpha: 1, size: 13 },
+        { emoji: '💋', x: midX,      y: midY - 15, vy: -1.4, alpha: 0.82, size: 20 },
+        { emoji: '✨', x: midX - 15, y: midY - 5,  vy: -0.9, alpha: 0.82, size: 13 },
       ];
     case 'Nuzzle':
       return [
-        { emoji: '🤍', x: midX, y: midY - 20, vy: -1.1, alpha: 1, size: 18 },
-        { emoji: '✨', x: midX + 12, y: midY - 5, vy: -0.8, alpha: 1, size: 12 },
+        { emoji: '🤍', x: midX, y: midY - 20, vy: -1.1, alpha: 0.82, size: 18 },
+        { emoji: '✨', x: midX + 12, y: midY - 5, vy: -0.8, alpha: 0.82, size: 12 },
       ];
     case 'Throw heart':
       return [
-        { emoji: '💝', x: bunnyX - 10, y: midY - 25, vy: -1.6, alpha: 1, size: 22 },
-        { emoji: '✨', x: bunnyX + 5,  y: midY - 8,  vy: -1.0, alpha: 1, size: 14 },
-        { emoji: '💫', x: midX,        y: midY - 10, vy: -0.8, alpha: 1, size: 12 },
+        { emoji: '💝', x: bunnyX - 10, y: midY - 25, vy: -1.6, alpha: 0.82, size: 22 },
+        { emoji: '✨', x: bunnyX + 5,  y: midY - 8,  vy: -1.0, alpha: 0.82, size: 14 },
+        { emoji: '💫', x: midX,        y: midY - 10, vy: -0.8, alpha: 0.82, size: 12 },
       ];
     case 'High five':
       return [
-        { emoji: '✨', x: midX,      y: midY - 25, vy: -1.2, alpha: 1, size: 18 },
-        { emoji: '⭐', x: midX - 10, y: midY - 10, vy: -0.9, alpha: 1, size: 14 },
+        { emoji: '✨', x: midX,      y: midY - 25, vy: -1.2, alpha: 0.82, size: 18 },
+        { emoji: '⭐', x: midX - 10, y: midY - 10, vy: -0.9, alpha: 0.82, size: 14 },
       ];
     case 'Hug':
       return [
-        { emoji: '🤍', x: midX, y: midY - 20, vy: -1.0, alpha: 1, size: 16 },
-        { emoji: '💜', x: midX + 8, y: midY - 8, vy: -0.8, alpha: 1, size: 13 },
+        { emoji: '🤍', x: midX, y: midY - 20, vy: -1.0, alpha: 0.82, size: 16 },
+        { emoji: '💜', x: midX + 8, y: midY - 8, vy: -0.8, alpha: 0.82, size: 13 },
       ];
     case 'Boop nose':
-      return [{ emoji: '⭐', x: bunnyX - 10, y: midY - 10, vy: -0.9, alpha: 1, size: 15 }];
+      return [{ emoji: '⭐', x: bunnyX - 10, y: midY - 10, vy: -0.9, alpha: 0.82, size: 15 }];
     case 'Wave':
-      return [{ emoji: '👋', x: midX + 15, y: midY - 30, vy: -0.7, alpha: 1, size: 16 }];
+      return [{ emoji: '👋', x: midX + 15, y: midY - 30, vy: -0.7, alpha: 0.82, size: 16 }];
     case 'Pat head':
-      return [{ emoji: '🫶', x: midX, y: midY - 20, vy: -0.8, alpha: 1, size: 16 }];
+      return [{ emoji: '🫶', x: midX, y: midY - 20, vy: -0.8, alpha: 0.82, size: 16 }];
     case 'Poke':
-      return [{ emoji: '💥', x: bearX + 5, y: midY - 10, vy: -0.7, alpha: 1, size: 15 }];
+      return [{ emoji: '💥', x: bearX + 5, y: midY - 10, vy: -0.7, alpha: 0.82, size: 15 }];
     default: return [];
   }
 }
@@ -615,6 +615,7 @@ export default function ChibiWidget({ name }) {
   }, [db, fs, myName, cleanExpired]);
 
   // ── Process queue ──
+  // FIX: use logical CSS pixels (divide by dpr) so particle positions are correct on retina screens
   const processQueue = useCallback(() => {
     const s = stateRef.current;
     if (s.isPlaying || s.queue.length === 0) return;
@@ -627,14 +628,16 @@ export default function ChibiWidget({ name }) {
     markSeen([next.id]);
     const canvas = canvasRef.current;
     if (canvas) {
-      const bearX  = canvas.width * 0.28;
-      const bunnyX = canvas.width * 0.72;
-      const midY   = canvas.height * 0.55;
+      const dpr    = window.devicePixelRatio || 1;
+      const bearX  = (canvas.width / dpr) * 0.28;
+      const bunnyX = (canvas.width / dpr) * 0.72;
+      const midY   = (canvas.height / dpr) * 0.55;
       s.particles.push(...getActionParticles(next.action, bearX, bunnyX, midY));
     }
   }, [markSeen]);
 
   // ── Trigger local action ──
+  // FIX: use logical CSS pixels (divide by dpr) so particle positions are correct on retina screens
   const triggerAction = useCallback((action) => {
     const s = stateRef.current;
     if (s.isPlaying) return;
@@ -646,28 +649,36 @@ export default function ChibiWidget({ name }) {
     sendAction(action);
     const canvas = canvasRef.current;
     if (canvas) {
-      const bearX  = canvas.width * 0.28;
-      const bunnyX = canvas.width * 0.72;
-      const midY   = canvas.height * 0.55;
+      const dpr    = window.devicePixelRatio || 1;
+      const bearX  = (canvas.width / dpr) * 0.28;
+      const bunnyX = (canvas.width / dpr) * 0.72;
+      const midY   = (canvas.height / dpr) * 0.55;
       s.particles.push(...getActionParticles(action, bearX, bunnyX, midY));
     }
   }, [sendAction, myName]);
 
   // ── Main render loop ──
+  // FIX: derive SCALE and base positions from CSS logical size (canvas.width / dpr)
+  //      so characters are correctly sized on high-DPR mobile screens
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
     const ACTION_DURATION = 100; // frames
-    const SCALE = canvas.width / 280;
-
-    const BASE_BEAR_X  = canvas.width * 0.28;
-    const BASE_BEAR_Y  = canvas.height * 0.68;
-    const BASE_BUNNY_X = canvas.width * 0.72;
-    const BASE_BUNNY_Y = canvas.height * 0.68;
 
     const loop = () => {
+      const dpr  = window.devicePixelRatio || 1;
+      const cssW = canvas.width / dpr;
+      const cssH = canvas.height / dpr;
+
+      const SCALE = cssW / 280;
+
+      const BASE_BEAR_X  = cssW * 0.28;
+      const BASE_BEAR_Y  = cssH * 0.68;
+      const BASE_BUNNY_X = cssW * 0.72;
+      const BASE_BUNNY_Y = cssH * 0.68;
+
       const s = stateRef.current;
       s.time++;
 
@@ -718,11 +729,11 @@ export default function ChibiWidget({ name }) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Subtle glow
-      const grd = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width * 0.4);
+      const grd = ctx.createRadialGradient(cssW / 2, cssH / 2, 0, cssW / 2, cssH / 2, cssW * 0.4);
       grd.addColorStop(0, 'rgba(180, 140, 255, 0.07)');
       grd.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = grd;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, cssW, cssH);
 
       // Bear (left, faces right naturally)
       drawBear(ctx, bearX, BASE_BEAR_Y, SCALE, {
@@ -753,12 +764,22 @@ export default function ChibiWidget({ name }) {
   }, [processQueue]);
 
   // ── Resize canvas ──
+  // FIX: account for devicePixelRatio so the canvas buffer is sharp on retina/high-DPR screens.
+  //      Without this, mobile browsers upscale a 1x buffer to fill a 3x screen, making emoji
+  //      bold and heavy. Mirrors the pattern used in DrawingCanvas.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const resize = () => {
-      canvas.width  = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      canvas.width  = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width  = `${w}px`;
+      canvas.style.height = `${h}px`;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
     };
     resize();
     const ro = new ResizeObserver(resize);
