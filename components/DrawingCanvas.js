@@ -1,9 +1,11 @@
 // components/DrawingCanvas.js
 // CHANGED:
 //   - Fixed broken guard in drawStroke: `!stroke.points?.length < 2` → `!stroke.points || stroke.points.length < 2`
-//   - Fixed disappearing stroke on mouseup: endDrawing now optimistically pushes the stroke into
-//     strokesCache BEFORE saving to Firestore, so redrawAllStrokes() always has the latest data
-//     even before the onSnapshot fires. The pending entry is replaced cleanly when Firestore responds.
+//   - Fixed disappearing stroke on mobile: onSnapshot was replacing strokesCache entirely, wiping the
+//     optimistic pending stroke before Firestore confirmed it (mobile network = slower round trip).
+//     Now the snapshot handler MERGES: keeps any __pending__ strokes that haven't been confirmed yet.
+//   - Separated touch end handler from mouse end handler to prevent double-fire on mobile
+//     (browsers synthesize mouseleave after touchend, which was calling endDrawing twice)
 //   - Moved currentStroke.current = [] reset to BEFORE the async Firestore call to avoid stale ref issues
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -154,10 +156,15 @@ export default function DrawingCanvas({ name }) {
     return fs.onSnapshot(
       fs.query(fs.collection(db, DB.strokes), fs.orderBy('timestamp', 'asc')),
       (snapshot) => {
-        const strokes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        strokesCache.current = strokes;
-        setMyStrokes(strokes.filter(s => s.author === name));
-        redrawAllStrokes(strokes);
+        const confirmed = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Keep any optimistic pending strokes that Firestore hasn't confirmed yet.
+        // Critical on mobile: slow round-trips mean the snapshot can fire before addDoc resolves,
+        // wiping the optimistic entry and causing the drawn stroke to vanish briefly.
+        const pending = strokesCache.current.filter(s => s.id === '__pending__');
+        const merged = [...confirmed, ...pending];
+        strokesCache.current = merged;
+        setMyStrokes(confirmed.filter(s => s.author === name));
+        redrawAllStrokes(merged);
       }
     );
   }, [db, fs, name, redrawAllStrokes]);
@@ -222,6 +229,8 @@ export default function DrawingCanvas({ name }) {
     ctx.stroke(); lastPos.current = pos;
   };
 
+  const lastTouchEnd = useRef(0);
+
   const endDrawing = async (e) => {
     if (!e || !isDrawing.current) return;
     e.preventDefault(); isDrawing.current = false;
@@ -235,24 +244,28 @@ export default function DrawingCanvas({ name }) {
       width: isEraser ? selectedWidth * 2.5 : selectedWidth,
     };
 
-    // FIX: Optimistically add to cache so the canvas doesn't blank while
-    // waiting for Firestore to confirm and onSnapshot to fire.
-    // The __pending__ entry gets replaced cleanly when the real snapshot arrives.
+    // Optimistically add to cache so the canvas doesn't blank while waiting for Firestore.
+    // On mobile, the onSnapshot round-trip is slower — without this the stroke vanishes.
     strokesCache.current = [...strokesCache.current, { id: '__pending__', ...strokeData }];
-    currentStroke.current = []; // reset before async to avoid stale ref
+    currentStroke.current = [];
 
     try {
       await fs.addDoc(fs.collection(db, DB.strokes), {
         ...strokeData,
         timestamp: fs.serverTimestamp(),
       });
-    } catch (e) {
-      console.error('Stroke save error:', e);
-      // Roll back the optimistic entry on failure
+    } catch (err) {
+      console.error('Stroke save error:', err);
       strokesCache.current = strokesCache.current.filter(s => s.id !== '__pending__');
       redrawAllStrokes(strokesCache.current);
     }
   };
+
+  // Browsers synthesize a mouseleave event right after touchend on mobile.
+  // If both call endDrawing, the second call races the async save and can wipe the stroke.
+  // Fix: track the last touchend time and suppress any mouse events within 300ms of it.
+  const endTouchDrawing = (e) => { lastTouchEnd.current = Date.now(); endDrawing(e); };
+  const endMouseDrawing = (e) => { if (Date.now() - lastTouchEnd.current < 300) return; endDrawing(e); };
 
   const selectColor = (c) => { setSelectedColor(c); setIsEraser(false); };
   const selectWidth = (w) => { setSelectedWidth(w); setIsEraser(false); };
@@ -267,8 +280,8 @@ export default function DrawingCanvas({ name }) {
     <div ref={canvasContainerRef} className={`relative overflow-hidden border border-white/10 shadow-inner bg-gray-50 ${isLandscape ? 'flex-1 min-w-0 rounded-xl' : 'flex-1 min-h-0 rounded-xl'}`} style={{ touchAction: 'none' }}>
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full"
         style={{ cursor: isEraser ? 'cell' : 'crosshair', touchAction: 'none' }}
-        onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={endDrawing} onMouseLeave={endDrawing}
-        onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={endDrawing}
+        onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={endMouseDrawing} onMouseLeave={endMouseDrawing}
+        onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={endTouchDrawing}
       />
     </div>
   );
